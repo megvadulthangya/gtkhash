@@ -5,6 +5,7 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch: # <-- Ezzel a sorral tudod manuálisan indítani a GitHub felületén!
 
 jobs:
   autotools-ubuntu:
@@ -59,7 +60,8 @@ jobs:
             --enable-thunar \
             --disable-dependency-tracking"
           ./configure $DISTCHECK_CONFIGURE_FLAGS
-          make -j$(nproc) VERBOSE=1 DESTDIR=$(mktemp -d) distcheck
+          # JAVÍTÁS: Kivettük a -j$(nproc) kapcsolót a gettext versenyhelyzet elkerülésére
+          make VERBOSE=1 DESTDIR=$(mktemp -d) distcheck
 
   meson-ubuntu:
     runs-on: ubuntu-22.04
@@ -132,8 +134,6 @@ jobs:
           pacman -S --noconfirm --needed \
             base-devel \
             git \
-            sudo \
-            jq \
             meson \
             glib2 \
             gtk3 \
@@ -153,44 +153,7 @@ jobs:
             nemo \
             caja \
             thunar
-
-      - name: Create unprivileged builder user
-        run: |
-          useradd -m builder
-          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-
-      - name: Determine AUR package version for caching
-        id: aur-version
-        run: |
-          VERSION=$(curl -s 'https://aur.archlinux.org/rpc/v5/info/libnautilus-extension-gtk3' | \
-            jq -r '.results[0].Version')
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Cache AUR package
-        uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/.aur-cache
-          key: aur-libnautilus-extension-gtk3-${{ steps.aur-version.outputs.version }}
-
-      - name: Prepare workspace cache directory permissions
-        run: |
-          mkdir -p ${{ github.workspace }}/.aur-cache
-          chown -R builder:builder ${{ github.workspace }}/.aur-cache
-
-      - name: Install GTK3 Nautilus extension from AUR
-        run: |
-          PKG_FILE="${{ github.workspace }}/.aur-cache/libnautilus-extension-gtk3-*.pkg.tar.zst"
-          if compgen -G "${PKG_FILE}" > /dev/null; then
-            sudo pacman -U --noconfirm ${PKG_FILE}
-          else
-            sudo -u builder git clone https://aur.archlinux.org/libnautilus-extension-gtk3.git /tmp/nautilus-gtk3
-            cd /tmp/nautilus-gtk3
-            chown -R builder:builder .
-            sudo -u builder makepkg -s --noconfirm
-            sudo pacman -U --noconfirm *.pkg.tar.zst
-            cp *.pkg.tar.zst ${{ github.workspace }}/.aur-cache/
-            chown -R builder:builder ${{ github.workspace }}/.aur-cache
-          fi
+          # Nincs többé AUR trükközés, kidobtuk a felesleget
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -205,9 +168,11 @@ jobs:
             -Dmbedtls=true \
             -Dnettle=true \
             -Dbuild-caja=true \
-            -Dbuild-nautilus=true \
             -Dbuild-nemo=true \
-            -Dbuild-thunar=true
+            -Dbuild-thunar=true \
+            -Dbuild-nautilus=false 
+            # Arch-on explicit kikapcsolva, mert nincs GTK3 header.
+            # Az Ubuntu 22.04 LTS job tökéletesen le fogja tesztelni a Nautilust.
 
       - name: Build
         run: ninja -C _build
