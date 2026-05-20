@@ -87,7 +87,7 @@ gtk_version = get_option('gtk_version')
 if gtk_version == '3'
     gtk = dependency('gtk+-3.0', version: '>=3.18')
 elif gtk_version == '4'
-    gtk = dependency('gtk+-4.0', version: '>=4.0')
+    gtk = dependency('gtk4', version: '>=4.0')
 else
     error('Invalid GTK version: ' + gtk_version)
 endif

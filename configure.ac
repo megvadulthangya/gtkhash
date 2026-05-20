@@ -92,7 +92,7 @@ AC_MSG_RESULT([${with_gtk}])
 
 AS_CASE([${with_gtk}],
 	[3.0], [PKG_CHECK_MODULES([GTK], [gtk+-3.0 >= 3.18])],
-	[4.0], [PKG_CHECK_MODULES([GTK], [gtk+-4.0 >= 4.0])],
+	[4.0], [PKG_CHECK_MODULES([GTK], [gtk4 >= 4.0])],
 	[AC_MSG_ERROR([Unsupported GTK version: ${with_gtk}])])
 AC_SUBST([GTK_CFLAGS])
 AC_SUBST([GTK_LIBS])
