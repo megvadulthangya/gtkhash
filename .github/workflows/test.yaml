@@ -5,7 +5,7 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
-  workflow_dispatch: # <-- Ezzel a sorral tudod manuálisan indítani a GitHub felületén!
+  workflow_dispatch:
 
 jobs:
   autotools-ubuntu:
@@ -60,7 +60,6 @@ jobs:
             --enable-thunar \
             --disable-dependency-tracking"
           ./configure $DISTCHECK_CONFIGURE_FLAGS
-          # JAVÍTÁS: Kivettük a -j$(nproc) kapcsolót a gettext versenyhelyzet elkerülésére
           make VERBOSE=1 DESTDIR=$(mktemp -d) distcheck
 
   meson-ubuntu:
@@ -144,7 +143,6 @@ jobs:
             libgcrypt \
             nettle \
             libb2 \
-            mbedtls \
             openssl \
             linux-api-headers \
             gettext \
@@ -153,7 +151,6 @@ jobs:
             nemo \
             caja \
             thunar
-          # Nincs többé AUR trükközés, kidobtuk a felesleget
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -165,14 +162,12 @@ jobs:
             -Dglib-checksums=true \
             -Dlibcrypto=true \
             -Dlinux-crypto=true \
-            -Dmbedtls=true \
+            -Dmbedtls=false \
             -Dnettle=true \
             -Dbuild-caja=true \
             -Dbuild-nemo=true \
             -Dbuild-thunar=true \
-            -Dbuild-nautilus=false 
-            # Arch-on explicit kikapcsolva, mert nincs GTK3 header.
-            # Az Ubuntu 22.04 LTS job tökéletesen le fogja tesztelni a Nautilust.
+            -Dbuild-nautilus=false
 
       - name: Build
         run: ninja -C _build
