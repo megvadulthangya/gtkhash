@@ -133,6 +133,7 @@ jobs:
             base-devel \
             git \
             sudo \
+            jq \
             meson \
             glib2 \
             gtk3 \
@@ -168,21 +169,27 @@ jobs:
       - name: Cache AUR package
         uses: actions/cache@v4
         with:
-          path: ~/.aur-cache
+          path: ${{ github.workspace }}/.aur-cache
           key: aur-libnautilus-extension-gtk3-${{ steps.aur-version.outputs.version }}
+
+      - name: Prepare workspace cache directory permissions
+        run: |
+          mkdir -p ${{ github.workspace }}/.aur-cache
+          chown -R builder:builder ${{ github.workspace }}/.aur-cache
 
       - name: Install GTK3 Nautilus extension from AUR
         run: |
-          PKG_FILE="$HOME/.aur-cache/libnautilus-extension-gtk3-*.pkg.tar.zst"
+          PKG_FILE="${{ github.workspace }}/.aur-cache/libnautilus-extension-gtk3-*.pkg.tar.zst"
           if compgen -G "${PKG_FILE}" > /dev/null; then
             sudo pacman -U --noconfirm ${PKG_FILE}
           else
             sudo -u builder git clone https://aur.archlinux.org/libnautilus-extension-gtk3.git /tmp/nautilus-gtk3
             cd /tmp/nautilus-gtk3
+            chown -R builder:builder .
             sudo -u builder makepkg -s --noconfirm
             sudo pacman -U --noconfirm *.pkg.tar.zst
-            mkdir -p "$HOME/.aur-cache"
-            cp *.pkg.tar.zst "$HOME/.aur-cache/"
+            cp *.pkg.tar.zst ${{ github.workspace }}/.aur-cache/
+            chown -R builder:builder ${{ github.workspace }}/.aur-cache
           fi
 
       - name: Checkout
