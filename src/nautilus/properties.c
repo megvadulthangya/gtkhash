@@ -193,10 +193,15 @@ static void gtkhash_properties_on_menu_map_event(struct page_s *page)
 
 static void gtkhash_properties_on_menuitem_copy_activate(struct page_s *page)
 {
+#if GTK4
+	GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(page->box));
+	char *digest = gtkhash_properties_list_get_selected_digest(page);
+	gdk_clipboard_set_text(clipboard, digest);
+#else
 	GtkClipboard *clipboard = gtk_clipboard_get(GDK_NONE);
 	char *digest = gtkhash_properties_list_get_selected_digest(page);
-
 	gtk_clipboard_set_text(clipboard, digest, -1);
+#endif
 
 	g_free(digest);
 }

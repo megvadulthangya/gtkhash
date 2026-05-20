@@ -86,13 +86,17 @@ GLIB_GSETTINGS
 # check for gtk {{{
 AC_MSG_CHECKING([which GTK version to use])
 AC_ARG_WITH([gtk],
-	[AS_HELP_STRING([--with-gtk=3.0], [GTK version to use [default=3.0]])],
+	[AS_HELP_STRING([--with-gtk=3.0], [GTK version to use [default=3.0], allowed: 3.0, 4.0])],
 	[with_gtk="${withval}"], [with_gtk="3.0"])
 AC_MSG_RESULT([${with_gtk}])
 
-PKG_CHECK_MODULES([GTK], ["gtk+-${with_gtk}" >= 3.18])
+AS_CASE([${with_gtk}],
+	[3.0], [PKG_CHECK_MODULES([GTK], [gtk+-3.0 >= 3.18])],
+	[4.0], [PKG_CHECK_MODULES([GTK], [gtk+-4.0 >= 4.0])],
+	[AC_MSG_ERROR([Unsupported GTK version: ${with_gtk}])])
 AC_SUBST([GTK_CFLAGS])
 AC_SUBST([GTK_LIBS])
+AM_CONDITIONAL([GTK4], [test "${with_gtk}" = "4.0"])
 # }}}
 
 # native file chooser option {{{
@@ -329,6 +333,8 @@ AC_MSG_RESULT([${enable_caja}])
 AM_CONDITIONAL([ENABLE_CAJA], [test "${enable_caja}" = "yes"])
 
 if test "${enable_caja}" = "yes" ; then
+	AS_IF([test "${with_gtk}" = "4.0"],
+		[AC_MSG_ERROR([Caja extension cannot be built with GTK4. Disable --enable-caja or use --with-gtk=3.0])])
 	# Check for caja
 	PKG_CHECK_MODULES([CAJA], [libcaja-extension])
 	AC_SUBST([CAJA_CFLAGS])
@@ -347,6 +353,8 @@ AC_MSG_RESULT([${enable_nautilus}])
 AM_CONDITIONAL([ENABLE_NAUTILUS], [test "${enable_nautilus}" = "yes"])
 
 if test "${enable_nautilus}" = "yes" ; then
+	AS_IF([test "${with_gtk}" = "4.0"],
+		[AC_MSG_ERROR([Nautilus extension cannot be built with GTK4. Disable --enable-nautilus or use --with-gtk=3.0])])
 	# Check for nautilus
 	PKG_CHECK_MODULES([NAUTILUS], [libnautilus-extension])
 	AC_SUBST([NAUTILUS_CFLAGS])
@@ -371,6 +379,8 @@ AC_MSG_RESULT([${enable_nemo}])
 AM_CONDITIONAL([ENABLE_NEMO], [test "${enable_nemo}" = "yes"])
 
 if test "${enable_nemo}" = "yes" ; then
+	AS_IF([test "${with_gtk}" = "4.0"],
+		[AC_MSG_ERROR([Nemo extension cannot be built with GTK4. Disable --enable-nemo or use --with-gtk=3.0])])
 	# Check for nemo
 	PKG_CHECK_MODULES([NEMO], [libnemo-extension])
 	AC_SUBST([NEMO_CFLAGS])
@@ -391,10 +401,12 @@ AM_CONDITIONAL([ENABLE_THUNAR], [test "${enable_thunar}" = "yes"])
 AC_MSG_CHECKING([which Thunarx version to use])
 AC_ARG_WITH([thunarx],
 	[AS_HELP_STRING([--with-thunarx=3], [Thunarx version to use [default=3]])],
-	[with_thunar="${withval}"], [with_thunarx="3"])
+	[with_thunarx="${withval}"], [with_thunarx="3"])
 AC_MSG_RESULT([${with_thunarx}])
 
 if test "${enable_thunar}" = "yes" ; then
+	AS_IF([test "${with_gtk}" = "4.0"],
+		[AC_MSG_ERROR([Thunar extension cannot be built with GTK4. Disable --enable-thunar or use --with-gtk=3.0])])
 	# Check for thunar
 	PKG_CHECK_MODULES([THUNAR], ["thunarx-${with_thunarx}" >= 1.7.0])
 	AC_SUBST([THUNAR_CFLAGS])

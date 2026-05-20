@@ -29,4 +29,8 @@ if build_gtkhash
     )
 endif
 
-gtkhash_gtk3_gresource = files('gtkhash-gtk3.gresource.xml')
+if gtk_version == '3'
+    gtkhash_gtk_gresource = files('gtkhash-gtk3.gresource.xml')
+else
+    gtkhash_gtk_gresource = files('gtkhash-gtk4.gresource.xml')
+endif

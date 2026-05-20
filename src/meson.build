@@ -17,7 +17,7 @@ if build_gtkhash
         'uri-digest.c',
     ]
     gtkhash_common_sources += gnome.compile_resources('resources',
-        gtkhash_gtk3_gresource,
+        gtkhash_gtk_gresource,
         c_name: 'resources',
         source_dir: meson.current_source_dir() / '..' / 'data',
         extra_args: [

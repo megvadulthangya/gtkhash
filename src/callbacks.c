@@ -168,8 +168,13 @@ static void on_menuitem_edit_activate(void)
 		editable = gtk_editable_get_editable(GTK_EDITABLE(widget));
 		selection_ready = gtk_editable_get_selection_bounds(
 			GTK_EDITABLE(widget), NULL, NULL);
+#if GTK4
+		GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(widget));
+		clipboard_ready = gdk_clipboard_is_text_available(clipboard);
+#else
 		clipboard_ready = gtk_clipboard_wait_is_text_available(
 			gtk_clipboard_get(GDK_NONE));
+#endif
 	}
 
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.menuitem_cut),
@@ -435,7 +440,12 @@ static void on_menuitem_treeview_copy_activate(G_GNUC_UNUSED GtkMenuItem *menuit
 	char *digest = list_get_selected_digest(func->id);
 	g_assert(digest);
 
+#if GTK4
+	GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(gui.window));
+	gdk_clipboard_set_text(clipboard, digest);
+#else
 	gtk_clipboard_set_text(gtk_clipboard_get(GDK_NONE), digest, -1);
+#endif
 
 	g_free(digest);
 }

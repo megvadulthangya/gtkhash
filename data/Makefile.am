@@ -24,6 +24,8 @@ EXTRA_DIST = \
 	$(gsettings_SCHEMAS) \
 	gtkhash-gtk3.ui \
 	gtkhash-gtk3.gresource.xml \
+	gtkhash-gtk4.ui \
+	gtkhash-gtk4.gresource.xml \
 	meson.build
 
 CLEANFILES = $(applications_DATA)

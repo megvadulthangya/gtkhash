@@ -1,3 +1,4 @@
+option('gtk_version',    type: 'combo', choices: ['3', '4'], value: '3', description: 'GTK version to use')
 option('blake2',         type: 'boolean', value: 'true',  description: 'Use libb2')
 option('gcrypt',         type: 'boolean', value: 'true',  description: 'Use Libgcrypt')
 option('glib-checksums', type: 'boolean', value: 'false', description: 'Use the Glib Data Checksums API')

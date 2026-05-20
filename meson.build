@@ -82,7 +82,17 @@ no_dep = dependency('', required: false)
 
 glib = dependency('glib-2.0', version: '>=2.48.0')
 gio  = dependency('gio-2.0',  version: '>=2.48.0')
-gtk  = dependency('gtk+-3.0', version: '>=3.18')
+
+gtk_version = get_option('gtk_version')
+if gtk_version == '3'
+    gtk = dependency('gtk+-3.0', version: '>=3.18')
+elif gtk_version == '4'
+    gtk = dependency('gtk+-4.0', version: '>=4.0')
+else
+    error('Invalid GTK version: ' + gtk_version)
+endif
+config.set_quoted('GTK_VERSION', gtk_version)
+config.set10('GTK4', gtk_version == '4')
 
 #######################################
 # Hash libraries
@@ -138,7 +148,22 @@ zlib = get_option('zlib') ? dependency('zlib') : no_dep
 config.set10('ENABLE_ZLIB', zlib.found())
 
 #######################################
-# File manager extensions
+# File manager extensions (only allowed with GTK3)
+
+if gtk_version == '4'
+    if get_option('build-caja')
+        error('Caja extension cannot be built with GTK4. Disable build-caja or set gtk_version=3')
+    endif
+    if get_option('build-nautilus')
+        error('Nautilus extension cannot be built with GTK4. Disable build-nautilus or set gtk_version=3')
+    endif
+    if get_option('build-nemo')
+        error('Nemo extension cannot be built with GTK4. Disable build-nemo or set gtk_version=3')
+    endif
+    if get_option('build-thunar')
+        error('Thunar extension cannot be built with GTK4. Disable build-thunar or set gtk_version=3')
+    endif
+endif
 
 build_caja = get_option('build-caja')
 if build_caja

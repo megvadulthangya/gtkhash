@@ -66,9 +66,15 @@ EXTRA_DIST = \
 	test.md5sum.in \
 	meson.build
 
+if GTK4
+resources.c resources.h: \
+	../data/gtkhash-gtk4.gresource.xml \
+	../data/gtkhash-gtk4.ui
+else
 resources.c resources.h: \
 	../data/gtkhash-gtk3.gresource.xml \
 	../data/gtkhash-gtk3.ui
+endif
 	$(AM_V_GEN) $(GLIB_COMPILE_RESOURCES) \
 		--c-name resources \
 		--internal \
