@@ -148,14 +148,11 @@ zlib = get_option('zlib') ? dependency('zlib') : no_dep
 config.set10('ENABLE_ZLIB', zlib.found())
 
 #######################################
-# File manager extensions (only allowed with GTK3)
+# File manager extensions (only allowed with GTK3 for Caja, Nemo, Thunar; Nautilus supports GTK4)
 
 if gtk_version == '4'
     if get_option('build-caja')
         error('Caja extension cannot be built with GTK4. Disable build-caja or set gtk_version=3')
-    endif
-    if get_option('build-nautilus')
-        error('Nautilus extension cannot be built with GTK4. Disable build-nautilus or set gtk_version=3')
     endif
     if get_option('build-nemo')
         error('Nemo extension cannot be built with GTK4. Disable build-nemo or set gtk_version=3')
@@ -173,7 +170,11 @@ endif
 
 build_nautilus = get_option('build-nautilus')
 if build_nautilus
-    nautilus = dependency('libnautilus-extension')
+    if gtk_version == '4'
+        nautilus = dependency('libnautilus-extension-4')
+    else
+        nautilus = dependency('libnautilus-extension')
+    endif
     nautilus_extension_dir = nautilus.get_pkgconfig_variable('extensiondir')
     have_nautilus_header = cc.has_header('nautilus/nautilus-extension.h')
 endif

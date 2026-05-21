@@ -353,16 +353,18 @@ AC_MSG_RESULT([${enable_nautilus}])
 AM_CONDITIONAL([ENABLE_NAUTILUS], [test "${enable_nautilus}" = "yes"])
 
 if test "${enable_nautilus}" = "yes" ; then
-	AS_IF([test "${with_gtk}" = "4.0"],
-		[AC_MSG_ERROR([Nautilus extension cannot be built with GTK4. Disable --enable-nautilus or use --with-gtk=3.0])])
-	# Check for nautilus
-	PKG_CHECK_MODULES([NAUTILUS], [libnautilus-extension])
+	if test "${with_gtk}" = "4.0"; then
+		PKG_CHECK_MODULES([NAUTILUS], [libnautilus-extension-4])
+		NAUTILUS_EXTENSION_DIR=`${PKG_CONFIG} --variable=extensiondir libnautilus-extension-4`
+	else
+		PKG_CHECK_MODULES([NAUTILUS], [libnautilus-extension])
+		NAUTILUS_EXTENSION_DIR=`${PKG_CONFIG} --variable=extensiondir libnautilus-extension`
+	fi
 	AC_SUBST([NAUTILUS_CFLAGS])
 	AC_SUBST([NAUTILUS_LIBS])
-	NAUTILUS_EXTENSION_DIR=`${PKG_CONFIG} --variable=extensiondir libnautilus-extension`
 	AC_SUBST([NAUTILUS_EXTENSION_DIR])
 
-	# nautilus-3.29.90+ moved to a different header file
+	# nautilus-3.29.90+ moved to a different header file; for GTK4 the header is nautilus-extension.h
 	ac_save_CPPFLAGS="${CPPFLAGS}"
 	CPPFLAGS="${CPPFLAGS} ${NAUTILUS_CFLAGS}"
 	AC_CHECK_HEADERS([nautilus-extension.h])

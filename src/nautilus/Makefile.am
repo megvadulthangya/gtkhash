@@ -17,6 +17,14 @@ EXTRA_DIST = \
 	meson.build \
 	extension.map.in
 
+if GTK4
+properties_resource_xml = ../../data/nautilus/gtkhash-properties-gtk4.gresource.xml
+properties_ui = ../../data/nautilus/gtkhash-properties-gtk4.ui
+else
+properties_resource_xml = ../../data/nautilus/gtkhash-properties.gresource.xml
+properties_ui = ../../data/nautilus/gtkhash-properties.ui
+endif
+
 if ENABLE_CAJA
 
 cajadir = $(CAJA_EXTENSION_DIR)
@@ -141,9 +149,7 @@ libgtkhash_properties_thunar_la_LIBADD = \
 
 endif
 
-properties-resources.c: \
-	../../data/nautilus/gtkhash-properties.gresource.xml \
-	../../data/nautilus/gtkhash-properties.ui
+properties-resources.c: $(properties_resource_xml) $(properties_ui)
 	$(AM_V_GEN) $(GLIB_COMPILE_RESOURCES) \
 		--c-name gtkhash_properties_resources \
 		--internal \
