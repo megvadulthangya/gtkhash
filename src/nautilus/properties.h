@@ -25,28 +25,37 @@
 #include "../hash/hash-file.h"
 
 #if ENABLE_NLS
-	#include <glib/gi18n-lib.h>
+    #include <glib/gi18n-lib.h>
 #else
-	#define _(STR) (STR)
+    #define _(STR) (STR)
 #endif
 
 struct page_s {
-	GSettings *settings;
-	char *uri;
-	GtkWidget *box, *hbox_inputs;
-	GtkProgressBar *progressbar;
-	GtkTreeView *treeview;
-	GtkTreeSelection *treeselection;
-	GtkCellRendererToggle *cellrendtoggle;
-	GtkMenu *menu;
-	GtkMenuItem *menuitem_copy;
-	GtkCheckMenuItem *menuitem_show_funcs;
-	GtkToggleButton *togglebutton_hmac;
-	GtkEntry *entry_check, *entry_hmac;
-	GtkButton *button_hash, *button_stop;
-	struct hash_file_s *hfile;
-	struct hash_func_s funcs[HASH_FUNCS_N];
-	bool busy;
+    GSettings *settings;
+    char *uri;
+    GtkWidget *box, *hbox_inputs;
+    GtkProgressBar *progressbar;
+    GtkTreeView *treeview;
+    GtkTreeSelection *treeselection;
+    GtkCellRendererToggle *cellrendtoggle;
+
+#if GTK_CHECK_VERSION(4, 0, 0)
+    GtkPopoverMenu *menu;
+    GtkWidget *menuitem_copy;
+    GtkCheckButton *menuitem_show_funcs;
+    GtkGestureClick *treeview_gesture;
+#else
+    GtkMenu *menu;
+    GtkMenuItem *menuitem_copy;
+    GtkCheckMenuItem *menuitem_show_funcs;
+#endif
+
+    GtkToggleButton *togglebutton_hmac;
+    GtkEntry *entry_check, *entry_hmac;
+    GtkButton *button_hash, *button_stop;
+    struct hash_file_s *hfile;
+    struct hash_func_s funcs[HASH_FUNCS_N];
+    bool busy;
 };
 
 void gtkhash_properties_idle(struct page_s *page);
