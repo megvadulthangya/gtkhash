@@ -38,7 +38,11 @@
 
 static bool on_window_delete_event(void)
 {
+#if GTK_CHECK_VERSION(4,0,0)
+	gtk_widget_set_visible(GTK_WIDGET(gui.window), false);
+#else
 	gtk_widget_hide(GTK_WIDGET(gui.window));
+#endif
 	gtk_main_quit();
 
 	return true;
@@ -151,7 +155,11 @@ static void on_menuitem_save_as_activate(void)
 
 static void on_menuitem_quit_activate(void)
 {
+#if GTK_CHECK_VERSION(4,0,0)
+	gtk_widget_set_visible(GTK_WIDGET(gui.window), false);
+#else
 	gtk_widget_hide(GTK_WIDGET(gui.window));
+#endif
 	gtk_main_quit();
 }
 
@@ -168,7 +176,7 @@ static void on_menuitem_edit_activate(void)
 		editable = gtk_editable_get_editable(GTK_EDITABLE(widget));
 		selection_ready = gtk_editable_get_selection_bounds(
 			GTK_EDITABLE(widget), NULL, NULL);
-#if GTK4
+#if GTK_CHECK_VERSION(4,0,0)
 		GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(widget));
 		clipboard_ready = gdk_clipboard_is_text_available(clipboard);
 #else
@@ -193,21 +201,36 @@ static void on_menuitem_cut_activate(void)
 {
 	GtkEditable *widget = GTK_EDITABLE(gtk_window_get_focus(gui.window));
 
+#if GTK_CHECK_VERSION(4,0,0)
+	GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(widget));
+	gtk_editable_cut_clipboard(widget, clipboard);
+#else
 	gtk_editable_cut_clipboard(widget);
+#endif
 }
 
 static void on_menuitem_copy_activate(void)
 {
 	GtkEditable *widget = GTK_EDITABLE(gtk_window_get_focus(gui.window));
 
+#if GTK_CHECK_VERSION(4,0,0)
+	GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(widget));
+	gtk_editable_copy_clipboard(widget, clipboard);
+#else
 	gtk_editable_copy_clipboard(widget);
+#endif
 }
 
 static void on_menuitem_paste_activate(void)
 {
 	GtkEditable *widget = GTK_EDITABLE(gtk_window_get_focus(gui.window));
 
+#if GTK_CHECK_VERSION(4,0,0)
+	GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(widget));
+	gtk_editable_paste_clipboard(widget, clipboard);
+#else
 	gtk_editable_paste_clipboard(widget);
+#endif
 }
 
 static void on_menuitem_delete_activate(void)
@@ -227,7 +250,11 @@ static void on_menuitem_select_all_activate(void)
 
 static void on_menuitem_prefs_activate(void)
 {
+#if GTK_CHECK_VERSION(4,0,0)
+	gtk_widget_set_visible(GTK_WIDGET(gui.dialog), true);
+#else
 	gtk_widget_show(GTK_WIDGET(gui.dialog));
+#endif
 }
 
 static void on_radiomenuitem_toggled(void)
@@ -293,8 +320,13 @@ static void on_menuitem_about_activate(void)
 static void on_filechooserbutton_selection_changed(void)
 {
 	bool enabled = hash_funcs_count_enabled();
-	char *uri = gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(
-		gui.filechooserbutton));
+#if GTK_CHECK_VERSION(4,0,0)
+	GFile *file = gtk_file_chooser_get_file(GTK_FILE_CHOOSER(gui.filechooserbutton));
+	char *uri = file ? g_file_get_uri(file) : NULL;
+	if (file) g_object_unref(file);
+#else
+	char *uri = gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(gui.filechooserbutton));
+#endif
 
 	if (enabled && uri) {
 		g_free(uri);
@@ -380,7 +412,9 @@ static void show_menu_treeview(GdkEventButton *event)
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.menuitem_treeview_copy),
 		can_copy);
 
-#if GTK_CHECK_VERSION(3,22,0)
+#if GTK_CHECK_VERSION(4,0,0)
+	gtk_menu_popup_at_pointer(gui.menu_treeview, (GdkEvent *)event);
+#elif GTK_CHECK_VERSION(3,22,0)
 	gtk_menu_popup_at_pointer(gui.menu_treeview, (GdkEvent *)event);
 #else
 	if (event) {
@@ -404,6 +438,13 @@ static void on_treeview_popup_menu(void)
 static bool on_treeview_button_press_event(G_GNUC_UNUSED GtkWidget *widget,
 	GdkEventButton *event)
 {
+#if GTK_CHECK_VERSION(4,0,0)
+	// In GTK4, we use GtkGestureClick to handle context menu.
+	// This callback is not used in GTK4 because we set up a separate controller.
+	// For compatibility, we simply return false and let the gesture handler manage.
+	// The actual popup is triggered by a GtkGestureClick handler registered in callbacks_init.
+	return false;
+#else
 	if (gdk_event_triggers_context_menu((GdkEvent *)event)) {
 		show_menu_treeview(event);
 		// Stop processing the event now so the selection won't be changed
@@ -411,6 +452,7 @@ static bool on_treeview_button_press_event(G_GNUC_UNUSED GtkWidget *widget,
 	}
 
 	return false;
+#endif
 }
 
 static void on_treeview_drag_data_received(G_GNUC_UNUSED GtkWidget *widget,
@@ -418,6 +460,12 @@ static void on_treeview_drag_data_received(G_GNUC_UNUSED GtkWidget *widget,
 	GtkSelectionData *selection, G_GNUC_UNUSED guint info, guint t,
 	G_GNUC_UNUSED gpointer data)
 {
+#if GTK_CHECK_VERSION(4,0,0)
+	// GTK4 drag-and-drop API is completely different.
+	// For now, we simply finish the drag without doing anything.
+	// Proper GTK4 DnD would require GdkDrop and GdkDrag objects.
+	gdk_drag_finish(context, false, true, t);
+#else
 	char **uris = gtk_selection_data_get_uris(selection);
 	if (!uris) {
 		gtk_drag_finish(context, false, true, t);
@@ -432,6 +480,7 @@ static void on_treeview_drag_data_received(G_GNUC_UNUSED GtkWidget *widget,
 	g_strfreev(uris);
 
 	gtk_drag_finish(context, true, true, t);
+#endif
 }
 
 static void on_menuitem_treeview_copy_activate(G_GNUC_UNUSED GtkMenuItem *menuitem,
@@ -440,7 +489,7 @@ static void on_menuitem_treeview_copy_activate(G_GNUC_UNUSED GtkMenuItem *menuit
 	char *digest = list_get_selected_digest(func->id);
 	g_assert(digest);
 
-#if GTK4
+#if GTK_CHECK_VERSION(4,0,0)
 	GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(gui.window));
 	gdk_clipboard_set_text(clipboard, digest);
 #else
@@ -455,7 +504,11 @@ static void on_menuitem_treeview_show_toolbar_toggled(void)
 	const bool show_toolbar = gtk_check_menu_item_get_active(
 		GTK_CHECK_MENU_ITEM(gui.menuitem_treeview_show_toolbar));
 
+#if GTK_CHECK_VERSION(4,0,0)
 	gtk_widget_set_visible(GTK_WIDGET(gui.toolbar), show_toolbar);
+#else
+	gtk_widget_set_visible(GTK_WIDGET(gui.toolbar), show_toolbar);
+#endif
 }
 
 static void on_button_hash_clicked(G_GNUC_UNUSED GtkButton *button,
@@ -492,7 +545,12 @@ static void on_entry_check_icon_press(GtkEntry *entry,
 		return;
 
 	gtk_entry_set_text(entry, "");
+#if GTK_CHECK_VERSION(4,0,0)
+	GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(entry));
+	gtk_editable_paste_clipboard(GTK_EDITABLE(entry), clipboard);
+#else
 	gtk_editable_paste_clipboard(GTK_EDITABLE(entry));
+#endif
 }
 
 static void on_togglebutton_hmac_file_toggled(void)
@@ -548,7 +606,11 @@ static void on_entry_hmac_populate_popup(GtkEntry *entry, GtkMenu *menu)
 
 static bool on_dialog_delete_event(void)
 {
+#if GTK_CHECK_VERSION(4,0,0)
+	gtk_widget_set_visible(GTK_WIDGET(gui.dialog), false);
+#else
 	gtk_widget_hide(GTK_WIDGET(gui.dialog));
+#endif
 	return true;
 }
 
@@ -569,6 +631,19 @@ static void on_dialog_combobox_changed(void)
 	else
 		gui_check_digests();
 }
+
+#if GTK_CHECK_VERSION(4,0,0)
+static void on_treeview_click_gesture_pressed(GtkGestureClick *gesture,
+	int n_press, double x, double y, gpointer user_data)
+{
+	guint button = gtk_gesture_single_get_current_button(GTK_GESTURE_SINGLE(gesture));
+	GdkModifierType state = gtk_gesture_single_get_current_event_state(GTK_GESTURE_SINGLE(gesture));
+
+	if (button == GDK_BUTTON_SECONDARY || (button == GDK_BUTTON_PRIMARY && (state & GDK_CONTROL_MASK))) {
+		show_menu_treeview(NULL);
+	}
+}
+#endif
 
 void callbacks_init(void)
 {
@@ -633,6 +708,14 @@ void callbacks_init(void)
 			"activate", G_CALLBACK(on_menuitem_treeview_copy_activate),
 			&hash.funcs[i]);
 	}
+
+#if GTK_CHECK_VERSION(4,0,0)
+	// Add gesture for right-click context menu on treeview
+	GtkGesture *gesture = gtk_gesture_click_new();
+	gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(gesture), 0); // all buttons
+	g_signal_connect(gesture, "pressed", G_CALLBACK(on_treeview_click_gesture_pressed), NULL);
+	gtk_widget_add_controller(GTK_WIDGET(gui.treeview), GTK_EVENT_CONTROLLER(gesture));
+#endif
 
 #undef CON
 }
