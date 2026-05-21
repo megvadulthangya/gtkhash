@@ -1,4 +1,4 @@
-common_cppflags = -DLOCALEDIR="\"$(localedir)\""
+common_cppflags = -DLOCALEDIR="\"$(localedir)\"" $(GTK_CFLAGS)
 
 common_ldflags = \
 	-avoid-version \
@@ -7,7 +7,8 @@ common_ldflags = \
 
 common_libadd = \
 	../hash/hash.la \
-	../util/util.la
+	../util/util.la \
+	$(GTK_LIBS)
 
 BUILT_SOURCES = properties-resources.c
 

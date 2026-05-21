@@ -70,7 +70,7 @@ foreach extension : extensions
             libutil,
         ],
         link_args: [ '-Wl,--version-script,@0@'.format(extension_map_file), ],
-        dependencies: extension.get('dep'),
+        dependencies: [gtk, extension.get('dep')],
         install: true,
         install_dir: extension.get('dir'),
     )
