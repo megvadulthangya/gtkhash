@@ -119,7 +119,14 @@ static void on_menuitem_open_activate(void)
 
 static void on_menuitem_save_as_activate(void)
 {
-#if (GTK_CHECK_VERSION(3,20,0) && ENABLE_NATIVE_FILE_CHOOSER)
+#if GTK_CHECK_VERSION(4,0,0)
+	GtkFileChooser *chooser = GTK_FILE_CHOOSER(gtk_file_chooser_dialog_new(
+		_("Save Digest File"), gui.window,
+		GTK_FILE_CHOOSER_ACTION_SAVE,
+		_("_Cancel"), GTK_RESPONSE_CANCEL,
+		_("_Save"), GTK_RESPONSE_ACCEPT,
+		NULL));
+#elif (GTK_CHECK_VERSION(3,20,0) && ENABLE_NATIVE_FILE_CHOOSER)
 	GtkFileChooser *chooser = GTK_FILE_CHOOSER(gtk_file_chooser_native_new(
 		_("Save Digest File"), gui.window, GTK_FILE_CHOOSER_ACTION_SAVE,
 		_("_Save"), _("_Cancel")));
@@ -134,19 +141,35 @@ static void on_menuitem_save_as_activate(void)
 
 	gtk_file_chooser_set_select_multiple(chooser, false);
 	gtk_file_chooser_set_local_only(chooser, true); // TODO
+#if !GTK_CHECK_VERSION(4,0,0)
 	gtk_file_chooser_set_do_overwrite_confirmation(chooser, true);
-
-#if (GTK_CHECK_VERSION(3,20,0) && ENABLE_NATIVE_FILE_CHOOSER)
-	if (gtk_native_dialog_run(GTK_NATIVE_DIALOG(chooser)) == GTK_RESPONSE_ACCEPT) {
-#else
-	if (gtk_dialog_run(GTK_DIALOG(chooser)) == GTK_RESPONSE_ACCEPT) {
 #endif
+
+#if GTK_CHECK_VERSION(4,0,0)
+	if (gtk_dialog_run(GTK_DIALOG(chooser)) == GTK_RESPONSE_ACCEPT) {
+		GFile *file = gtk_file_chooser_get_file(chooser);
+		char *filename = file ? g_file_get_path(file) : NULL;
+		if (filename) {
+			check_file_save(filename);
+			g_free(filename);
+		}
+		if (file) g_object_unref(file);
+	}
+#elif (GTK_CHECK_VERSION(3,20,0) && ENABLE_NATIVE_FILE_CHOOSER)
+	if (gtk_native_dialog_run(GTK_NATIVE_DIALOG(chooser)) == GTK_RESPONSE_ACCEPT) {
 		char *filename = gtk_file_chooser_get_filename(chooser);
 		check_file_save(filename);
 		g_free(filename);
 	}
+#else
+	if (gtk_dialog_run(GTK_DIALOG(chooser)) == GTK_RESPONSE_ACCEPT) {
+		char *filename = gtk_file_chooser_get_filename(chooser);
+		check_file_save(filename);
+		g_free(filename);
+	}
+#endif
 
-#if (GTK_CHECK_VERSION(3,20,0) && ENABLE_NATIVE_FILE_CHOOSER)
+#if (GTK_CHECK_VERSION(3,20,0) && ENABLE_NATIVE_FILE_CHOOSER) && !GTK_CHECK_VERSION(4,0,0)
 	g_object_unref(chooser);
 #else
 	gtk_widget_destroy(GTK_WIDGET(chooser));
@@ -197,12 +220,44 @@ static void on_menuitem_edit_activate(void)
 		selectable);
 }
 
+#if GTK_CHECK_VERSION(4,0,0)
+static void clipboard_store_selection(GtkEditable *editable, GdkClipboard *clipboard, bool cut)
+{
+	GtkEntryBuffer *buffer = gtk_entry_get_buffer(GTK_ENTRY(editable));
+	gint start, end;
+	if (gtk_editable_get_selection_bounds(editable, &start, &end)) {
+		char *text = gtk_entry_buffer_get_text(buffer);
+		char *selected = g_strndup(text + start, end - start);
+		gdk_clipboard_set_text(clipboard, selected);
+		if (cut) {
+			gtk_editable_delete_selection(editable);
+		}
+		g_free(selected);
+	}
+}
+
+static void clipboard_paste(GtkEditable *editable, GdkClipboard *clipboard)
+{
+	gdk_clipboard_read_text_async(clipboard, NULL, (GAsyncReadyCallback) [](GObject *source, GAsyncResult *res, gpointer user_data) {
+		GdkClipboard *cb = GDK_CLIPBOARD(source);
+		GError *error = NULL;
+		char *text = gdk_clipboard_read_text_finish(cb, res, &error);
+		if (text && !error) {
+			GtkEditable *editable = GTK_EDITABLE(user_data);
+			gtk_editable_insert_text(editable, text, -1, -1);
+			g_free(text);
+		}
+		g_clear_error(&error);
+	}, g_object_ref(editable));
+}
+#endif
+
 static void on_menuitem_cut_activate(void)
 {
 	GtkEditable *widget = GTK_EDITABLE(gtk_window_get_focus(gui.window));
-
 #if GTK_CHECK_VERSION(4,0,0)
-	gtk_editable_cut_clipboard(widget);
+	GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(widget));
+	clipboard_store_selection(widget, clipboard, true);
 #else
 	gtk_editable_cut_clipboard(widget);
 #endif
@@ -211,9 +266,9 @@ static void on_menuitem_cut_activate(void)
 static void on_menuitem_copy_activate(void)
 {
 	GtkEditable *widget = GTK_EDITABLE(gtk_window_get_focus(gui.window));
-
 #if GTK_CHECK_VERSION(4,0,0)
-	gtk_editable_copy_clipboard(widget);
+	GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(widget));
+	clipboard_store_selection(widget, clipboard, false);
 #else
 	gtk_editable_copy_clipboard(widget);
 #endif
@@ -222,9 +277,9 @@ static void on_menuitem_copy_activate(void)
 static void on_menuitem_paste_activate(void)
 {
 	GtkEditable *widget = GTK_EDITABLE(gtk_window_get_focus(gui.window));
-
 #if GTK_CHECK_VERSION(4,0,0)
-	gtk_editable_paste_clipboard(widget);
+	GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(widget));
+	clipboard_paste(widget, clipboard);
 #else
 	gtk_editable_paste_clipboard(widget);
 #endif
@@ -241,13 +296,8 @@ static void on_menuitem_select_all_activate(void)
 {
 	GtkEditable *widget = GTK_EDITABLE(gtk_window_get_focus(gui.window));
 
-#if GTK_CHECK_VERSION(4,0,0)
 	gtk_editable_set_position(widget, -1);
 	gtk_editable_select_region(widget, 0, -1);
-#else
-	gtk_editable_set_position(widget, -1);
-	gtk_editable_select_region(widget, 0, -1);
-#endif
 }
 
 static void on_menuitem_prefs_activate(void)
@@ -357,21 +407,41 @@ static void on_toolbutton_add_clicked(void)
 	gtk_file_chooser_set_select_multiple(chooser, true);
 	gtk_file_chooser_set_local_only(chooser, false);
 
-#if (GTK_CHECK_VERSION(3,20,0) && ENABLE_NATIVE_FILE_CHOOSER)
-	if (gtk_native_dialog_run(GTK_NATIVE_DIALOG(chooser)) == GTK_RESPONSE_ACCEPT) {
-#else
+#if GTK_CHECK_VERSION(4,0,0)
 	if (gtk_dialog_run(GTK_DIALOG(chooser)) == GTK_RESPONSE_ACCEPT) {
-#endif
+		GListModel *files = gtk_file_chooser_get_files(GTK_FILE_CHOOSER(chooser));
+		guint n = g_list_model_get_n_items(files);
+		GSList *uris = NULL;
+		for (guint i = 0; i < n; i++) {
+			GFile *file = g_list_model_get_item(files, i);
+			char *uri = g_file_get_uri(file);
+			uris = g_slist_append(uris, uri);
+			g_object_unref(file);
+		}
+		GSList *ud_list = uri_digest_list_from_uri_list(uris);
+		gui_add_ud_list(ud_list, GUI_VIEW_FILE_LIST);
+		uri_digest_list_free_full(ud_list);
+		g_slist_free_full(uris, g_free);
+	}
+#elif (GTK_CHECK_VERSION(3,20,0) && ENABLE_NATIVE_FILE_CHOOSER)
+	if (gtk_native_dialog_run(GTK_NATIVE_DIALOG(chooser)) == GTK_RESPONSE_ACCEPT) {
 		GSList *uris = gtk_file_chooser_get_uris(chooser);
 		GSList *ud_list = uri_digest_list_from_uri_list(uris);
-
 		gui_add_ud_list(ud_list, GUI_VIEW_FILE_LIST);
-
 		uri_digest_list_free_full(ud_list);
 		g_slist_free(uris);
 	}
+#else
+	if (gtk_dialog_run(GTK_DIALOG(chooser)) == GTK_RESPONSE_ACCEPT) {
+		GSList *uris = gtk_file_chooser_get_uris(chooser);
+		GSList *ud_list = uri_digest_list_from_uri_list(uris);
+		gui_add_ud_list(ud_list, GUI_VIEW_FILE_LIST);
+		uri_digest_list_free_full(ud_list);
+		g_slist_free(uris);
+	}
+#endif
 
-#if (GTK_CHECK_VERSION(3,20,0) && ENABLE_NATIVE_FILE_CHOOSER)
+#if (GTK_CHECK_VERSION(3,20,0) && ENABLE_NATIVE_FILE_CHOOSER) && !GTK_CHECK_VERSION(4,0,0)
 	g_object_unref(chooser);
 #else
 	gtk_widget_destroy(GTK_WIDGET(chooser));
@@ -493,11 +563,7 @@ static void on_menuitem_treeview_show_toolbar_toggled(void)
 	const bool show_toolbar = gtk_check_menu_item_get_active(
 		GTK_CHECK_MENU_ITEM(gui.menuitem_treeview_show_toolbar));
 
-#if GTK_CHECK_VERSION(4,0,0)
 	gtk_widget_set_visible(GTK_WIDGET(gui.toolbar), show_toolbar);
-#else
-	gtk_widget_set_visible(GTK_WIDGET(gui.toolbar), show_toolbar);
-#endif
 }
 
 static void on_button_hash_clicked(G_GNUC_UNUSED GtkButton *button,
@@ -535,14 +601,10 @@ static void on_entry_check_icon_press(GtkEntry *entry,
 
 #if GTK_CHECK_VERSION(4,0,0)
 	gtk_editable_set_text(GTK_EDITABLE(entry), "");
-#else
-	gtk_entry_set_text(entry, "");
-#endif
-
-#if GTK_CHECK_VERSION(4,0,0)
 	GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(entry));
 	gtk_editable_paste_clipboard(GTK_EDITABLE(entry), clipboard);
 #else
+	gtk_entry_set_text(entry, "");
 	gtk_editable_paste_clipboard(GTK_EDITABLE(entry));
 #endif
 }
@@ -587,15 +649,16 @@ static void on_entry_hmac_click_gesture_pressed(GtkGestureClick *gesture,
 	guint button = gtk_gesture_single_get_current_button(GTK_GESTURE_SINGLE(gesture));
 
 	if (button == GDK_BUTTON_SECONDARY) {
-		GtkWidget *menu = gtk_menu_new();
-		GtkWidget *item = gtk_check_menu_item_new_with_mnemonic(_("_Show HMAC Key"));
-		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item),
-			gtk_entry_get_visibility(entry));
-		g_signal_connect(item, "toggled",
-			G_CALLBACK(on_menuitem_show_hmac_key_toggled), entry);
-		gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-		gtk_widget_show_all(menu);
-		gtk_menu_popup_at_pointer(GTK_MENU(menu), NULL);
+		GtkWidget *popover = gtk_popover_menu_new();
+		GMenu *menu = g_menu_new();
+		GMenuItem *item = g_menu_item_new(_("_Show HMAC Key"), NULL);
+		g_menu_item_set_attribute(item, "action", "s", "win.show-hmac-key");
+		g_menu_append_item(menu, item);
+		g_object_unref(item);
+		gtk_popover_menu_set_menu(GTK_POPOVER_MENU(popover), G_MENU_MODEL(menu));
+		g_object_unref(menu);
+		gtk_popover_set_parent(popover, GTK_WIDGET(entry));
+		gtk_popover_popup(popover);
 	}
 }
 #else
