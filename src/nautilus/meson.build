@@ -1,13 +1,13 @@
 if gtk_version == '4'
-    gtkhash_properties_gresource = files('gtkhash-properties-gtk4.gresource.xml')
+    gtkhash_properties_gresource = '../../data/nautilus/gtkhash-properties-gtk4.gresource.xml'
 else
-    gtkhash_properties_gresource = files('gtkhash-properties.gresource.xml')
+    gtkhash_properties_gresource = '../../data/nautilus/gtkhash-properties.gresource.xml'
 endif
 
 properties_resources = gnome.compile_resources('resources',
     gtkhash_properties_gresource,
     c_name: 'gtkhash_properties_resources',
-    source_dir: meson.current_source_dir() / '..' / '..' / 'data' / 'nautilus',
+    source_dir: '../../data/nautilus',
 )
 
 extensions_sources = [
