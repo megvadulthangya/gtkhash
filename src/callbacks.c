@@ -1,20 +1,20 @@
 /*
- *   Copyright (C) 2007-2020 Tristan Heaven <tristan@tristanheaven.net>
+ * Copyright (C) 2007-2020 Tristan Heaven <tristan@tristanheaven.net>
  *
- *   This file is part of GtkHash.
+ * This file is part of GtkHash.
  *
- *   GtkHash is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ * GtkHash is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
  *
- *   GtkHash is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *   GNU General Public License for more details.
+ * GtkHash is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with GtkHash. If not, see <https://gnu.org/licenses/gpl-2.0.txt>.
+ * You should have received a copy of the GNU General Public License
+ * along with GtkHash. If not, see <https://gnu.org/licenses/gpl-2.0.txt>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -58,12 +58,10 @@ static void on_open_dialog_response(GtkNativeDialog *dialog, int response, gpoin
 
 		for (guint i = 0; i < n; i++) {
 			GFile *file = G_FILE(g_list_model_get_item(files, i));
-			char *path = g_file_get_path(file);
-			if (path) {
-				ud_list = check_file_load(ud_list, path);
-				g_free(path);
+			if (file) {
+				ud_list = check_file_load(ud_list, file);
+				g_object_unref(file);
 			}
-			g_object_unref(file);
 		}
 
 		if (ud_list) {
@@ -314,7 +312,8 @@ static void on_clipboard_read_text_ready(GObject *source, GAsyncResult *res, gpo
 	char *text = gdk_clipboard_read_text_finish(cb, res, &error);
 	if (text && !error) {
 		GtkEditable *editable = GTK_EDITABLE(user_data);
-		gtk_editable_insert_text(editable, text, -1, -1);
+		int pos = -1;
+		gtk_editable_insert_text(editable, text, -1, &pos);
 		g_free(text);
 	}
 	g_clear_error(&error);

@@ -1,20 +1,20 @@
 /*
- *   Copyright (C) 2007-2018 Tristan Heaven <tristan@tristanheaven.net>
+ * Copyright (C) 2007-2018 Tristan Heaven <tristan@tristanheaven.net>
  *
- *   This file is part of GtkHash.
+ * This file is part of GtkHash.
  *
- *   GtkHash is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ * GtkHash is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
  *
- *   GtkHash is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *   GNU General Public License for more details.
+ * GtkHash is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with GtkHash. If not, see <https://gnu.org/licenses/gpl-2.0.txt>.
+ * You should have received a copy of the GNU General Public License
+ * along with GtkHash. If not, see <https://gnu.org/licenses/gpl-2.0.txt>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -266,13 +266,18 @@ void check_file_save(const char * const filename)
 
 		switch (gui.view) {
 			case GUI_VIEW_FILE: {
+#if GTK_CHECK_VERSION(4,0,0)
+				const char *digest = gtk_editable_get_text(
+					GTK_EDITABLE(gui.hash_widgets[i].entry_file));
+#else
 				const char *digest = gtk_entry_get_text(
-					gui.hash_widgets[i].entry_file);
+					GTK_ENTRY(gui.hash_widgets[i].entry_file));
+#endif
 				if (!(digest && *digest))
 					continue;
 
 				const bool hmac_active = gtk_toggle_button_get_active(
-					gui.togglebutton_hmac_file);
+					GTK_TOGGLE_BUTTON(gui.togglebutton_hmac_file));
 
 				g_string_append_printf(string,
 					(hmac_active && hash.funcs[i].hmac_supported) ?
@@ -282,9 +287,15 @@ void check_file_save(const char * const filename)
 					GTK_FILE_CHOOSER(gui.filechooserbutton));
 				char *basename = g_file_get_basename(file);
 
+#if GTK_CHECK_VERSION(4,0,0)
 				g_string_append_printf(string, "%s  %s\n",
-					gtk_entry_get_text(gui.hash_widgets[i].entry_file),
+					gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[i].entry_file)),
 						basename);
+#else
+				g_string_append_printf(string, "%s  %s\n",
+					gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[i].entry_file)),
+						basename);
+#endif
 
 				g_free(basename);
 				g_object_unref(file);
@@ -293,14 +304,20 @@ void check_file_save(const char * const filename)
 			}
 			case GUI_VIEW_TEXT: {
 				const bool hmac_active = gtk_toggle_button_get_active(
-					gui.togglebutton_hmac_text);
+					GTK_TOGGLE_BUTTON(gui.togglebutton_hmac_text));
 
 				g_string_append_printf(string,
 					(hmac_active && hash.funcs[i].hmac_supported) ?
 					"# HMAC-%s\n" : "# %s\n", hash.funcs[i].name);
+#if GTK_CHECK_VERSION(4,0,0)
 				g_string_append_printf(string, "%s  \"%s\"\n",
-					gtk_entry_get_text(gui.hash_widgets[i].entry_text),
-					gtk_entry_get_text(gui.entry_text));
+					gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[i].entry_text)),
+					gtk_editable_get_text(GTK_EDITABLE(gui.entry_text)));
+#else
+				g_string_append_printf(string, "%s  \"%s\"\n",
+					gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[i].entry_text)),
+					gtk_entry_get_text(GTK_ENTRY(gui.entry_text)));
+#endif
 
 				break;
 			}
