@@ -665,9 +665,13 @@ static GList *gtkhash_properties_get_models(
     if (!page)
         return NULL;
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+    NautilusPropertiesModel *model = nautilus_properties_model_new(_("Checksums"), page->box);
+#else
     NautilusPropertiesModel *model = nautilus_properties_model_new();
     nautilus_properties_model_set_title(model, _("Checksums"));
     nautilus_properties_model_set_widget(model, page->box);
+#endif
 
     return g_list_append(NULL, model);
 }
