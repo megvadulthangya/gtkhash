@@ -547,7 +547,11 @@ static void test_opt_file(void)
 #endif
 
 		// Started from Hash button
+#if GTK_MAJOR_VERSION >= 4
+		g_signal_emit_by_name(gui.button_hash, "clicked");
+#else
 		gtk_button_clicked(gui.button_hash);
+#endif
 		delay();
 #if GTK_MAJOR_VERSION >= 4
 		while (!*gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
@@ -560,7 +564,11 @@ static void test_opt_file(void)
 #endif
 
 		// Started from function label
+#if GTK_MAJOR_VERSION >= 4
+		g_signal_emit_by_name(GTK_BUTTON(gui.hash_widgets[HASH_FUNC_MD5].label_file), "clicked");
+#else
 		gtk_button_clicked(GTK_BUTTON(gui.hash_widgets[HASH_FUNC_MD5].label_file));
+#endif
 		delay();
 #if GTK_MAJOR_VERSION >= 4
 		while (!*gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
