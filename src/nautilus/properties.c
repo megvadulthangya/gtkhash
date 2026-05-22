@@ -377,7 +377,7 @@ static GList *gtkhash_properties_get_models(G_GNUC_UNUSED NautilusPropertiesMode
     GListStore *store = g_list_store_new(NAUTILUS_TYPE_PROPERTIES_ITEM);
     for (int i = 0; i < HASH_FUNCS_N; i++) {
         if (page->funcs[i].enabled) {
-            NautilusPropertiesItem *item = nautilus_properties_item_new(hash_get_name(i), "");
+            NautilusPropertiesItem *item = nautilus_properties_item_new(gtkhash_hash_get_name(i), "");
             g_list_store_append(store, item);
             g_object_unref(item);
         }
@@ -480,3 +480,18 @@ static void gtkhash_properties_register_type(GTypeModule *module) {
         NULL
     };
 #if defined(IN_NAUTILUS_EXTENSION) && GTK_CHECK_VERSION(4, 0, 0)
+    g_type_module_add_interface(module, page_type, NAUTILUS_TYPE_PROPERTIES_MODEL_PROVIDER, &pp_iface_info);
+#else
+    g_type_module_add_interface(module, page_type,
+#if defined(IN_NAUTILUS_EXTENSION)
+        NAUTILUS_TYPE_PROPERTY_PAGE_PROVIDER,
+#elif defined(IN_CAJA_EXTENSION)
+        CAJA_TYPE_PROPERTY_PAGE_PROVIDER,
+#elif defined(IN_NEMO_EXTENSION)
+        NEMO_TYPE_PROPERTY_PAGE_PROVIDER,
+#elif defined(IN_THUNAR_EXTENSION)
+        THUNARX_TYPE_PROPERTY_PAGE_PROVIDER,
+#endif
+        &pp_iface_info);
+#endif
+}
