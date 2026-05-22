@@ -42,9 +42,12 @@
 static void delay(void)
 {
 	for (int i = 0; i < 10; i++) {
+#if GTK_MAJOR_VERSION >= 4
+		while (g_main_context_iteration(NULL, FALSE));
+#else
 		while (gtk_events_pending())
 			gtk_main_iteration();
-
+#endif
 		g_usleep(G_USEC_PER_SEC / 250);
 	}
 }
@@ -77,22 +80,39 @@ static void select_digest_format(const enum digest_format_e format)
 static void test_hash_func_digest(const enum hash_func_e id, const char *text,
 	const char *hmac, const char *digest)
 {
-	gtk_entry_set_text(gui.entry_check_text, digest);
-	gtk_entry_set_text(gui.entry_text, text);
+#if GTK_MAJOR_VERSION >= 4
+	gtk_editable_set_text(GTK_EDITABLE(gui.entry_check_text), digest);
+	gtk_editable_set_text(GTK_EDITABLE(gui.entry_text), text);
+#else
+	gtk_entry_set_text(GTK_ENTRY(gui.entry_check_text), digest);
+	gtk_entry_set_text(GTK_ENTRY(gui.entry_text), text);
+#endif
 
 	if (hmac) {
 		gtk_toggle_button_set_active(gui.dialog_togglebutton_show_hmac, true);
 		gtk_toggle_button_set_active(gui.togglebutton_hmac_text, true);
-		gtk_entry_set_text(gui.entry_hmac_text, hmac);
+#if GTK_MAJOR_VERSION >= 4
+		gtk_editable_set_text(GTK_EDITABLE(gui.entry_hmac_text), hmac);
+#else
+		gtk_entry_set_text(GTK_ENTRY(gui.entry_hmac_text), hmac);
+#endif
 	} else {
 		gtk_toggle_button_set_active(gui.dialog_togglebutton_show_hmac, false);
 		gtk_toggle_button_set_active(gui.togglebutton_hmac_text, false);
-		gtk_entry_set_text(gui.entry_hmac_text, "");
+#if GTK_MAJOR_VERSION >= 4
+		gtk_editable_set_text(GTK_EDITABLE(gui.entry_hmac_text), "");
+#else
+		gtk_entry_set_text(GTK_ENTRY(gui.entry_hmac_text), "");
+#endif
 	}
 
 	delay();
 
-	const char *output = gtk_entry_get_text(gui.hash_widgets[id].entry_text);
+#if GTK_MAJOR_VERSION >= 4
+	const char *output = gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[id].entry_text));
+#else
+	const char *output = gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[id].entry_text));
+#endif
 	g_assert_cmpstr(output, ==, digest);
 }
 
@@ -401,7 +421,11 @@ static void test_opt_check_text(void)
 		opts_postinit();
 		delay();
 
-		puts(gtk_entry_get_text(gui.entry_check_text));
+#if GTK_MAJOR_VERSION >= 4
+		puts(gtk_editable_get_text(GTK_EDITABLE(gui.entry_check_text)));
+#else
+		puts(gtk_entry_get_text(GTK_ENTRY(gui.entry_check_text)));
+#endif
 		exit(EXIT_SUCCESS);
 	}
 
@@ -434,8 +458,13 @@ static void test_opt_check_file(void)
 		g_test_expect_message(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING, "*");
 		g_timeout_add_seconds(2, G_SOURCE_FUNC(exit), NULL);
 
+#if GTK_MAJOR_VERSION >= 4
+		for (;;)
+			g_main_context_iteration(NULL, FALSE);
+#else
 		for (;;)
 			gtk_main_iteration_do(false);
+#endif
 
 		exit(EXIT_FAILURE);
 	}
@@ -507,23 +536,41 @@ static void test_opt_file(void)
 		g_assert(gui.view == GUI_VIEW_FILE);
 
 		// Started from cmdline
-		while (!*gtk_entry_get_text(gui.hash_widgets[HASH_FUNC_MD5].entry_file))
+#if GTK_MAJOR_VERSION >= 4
+		while (!*gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
+			g_main_context_iteration(NULL, FALSE);
+		puts(gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
+#else
+		while (!*gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
 			gtk_main_iteration_do(false);
-		puts(gtk_entry_get_text(gui.hash_widgets[HASH_FUNC_MD5].entry_file));
+		puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
+#endif
 
 		// Started from Hash button
 		gtk_button_clicked(gui.button_hash);
 		delay();
-		while (!*gtk_entry_get_text(gui.hash_widgets[HASH_FUNC_MD5].entry_file))
+#if GTK_MAJOR_VERSION >= 4
+		while (!*gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
+			g_main_context_iteration(NULL, FALSE);
+		puts(gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
+#else
+		while (!*gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
 			gtk_main_iteration_do(false);
-		puts(gtk_entry_get_text(gui.hash_widgets[HASH_FUNC_MD5].entry_file));
+		puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
+#endif
 
 		// Started from function label
 		gtk_button_clicked(GTK_BUTTON(gui.hash_widgets[HASH_FUNC_MD5].label_file));
 		delay();
-		while (!*gtk_entry_get_text(gui.hash_widgets[HASH_FUNC_MD5].entry_file))
+#if GTK_MAJOR_VERSION >= 4
+		while (!*gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
+			g_main_context_iteration(NULL, FALSE);
+		puts(gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
+#else
+		while (!*gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
 			gtk_main_iteration_do(false);
-		puts(gtk_entry_get_text(gui.hash_widgets[HASH_FUNC_MD5].entry_file));
+		puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
+#endif
 
 		exit(EXIT_SUCCESS);
 	}
@@ -558,8 +605,13 @@ static void test_opt_file_list(void)
 		g_assert(list.rows == 2);
 
 		char *digest;
+#if GTK_MAJOR_VERSION >= 4
+		while (!(digest = list_get_digest(1, HASH_FUNC_MD5)) || !*digest)
+			g_main_context_iteration(NULL, FALSE);
+#else
 		while (!(digest = list_get_digest(1, HASH_FUNC_MD5)) || !*digest)
 			gtk_main_iteration_do(false);
+#endif
 		puts(digest);
 		g_free(digest);
 
@@ -584,7 +636,11 @@ static void test_digest_format_hex_lower()
 		select_hash_func(HASH_FUNC_MD5, true);
 		select_digest_format(DIGEST_FORMAT_HEX_LOWER);
 
-		puts(gtk_entry_get_text(gui.hash_widgets[HASH_FUNC_MD5].entry_text));
+#if GTK_MAJOR_VERSION >= 4
+		puts(gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
+#else
+		puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
+#endif
 
 		exit(EXIT_SUCCESS);
 	}
@@ -601,7 +657,11 @@ static void test_digest_format_hex_upper()
 		select_hash_func(HASH_FUNC_MD5, true);
 		select_digest_format(DIGEST_FORMAT_HEX_UPPER);
 
-		puts(gtk_entry_get_text(gui.hash_widgets[HASH_FUNC_MD5].entry_text));
+#if GTK_MAJOR_VERSION >= 4
+		puts(gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
+#else
+		puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
+#endif
 
 		exit(EXIT_SUCCESS);
 	}
@@ -618,7 +678,11 @@ static void test_digest_format_base64()
 		select_hash_func(HASH_FUNC_MD5, true);
 		select_digest_format(DIGEST_FORMAT_BASE64);
 
-		puts(gtk_entry_get_text(gui.hash_widgets[HASH_FUNC_MD5].entry_text));
+#if GTK_MAJOR_VERSION >= 4
+		puts(gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
+#else
+		puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
+#endif
 
 		exit(EXIT_SUCCESS);
 	}
@@ -688,8 +752,8 @@ int main(int argc, char **argv)
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.window), false);
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.dialog), false);
 
-	gtk_widget_show_now(GTK_WIDGET(gui.window));
-	gtk_widget_show_now(GTK_WIDGET(gui.dialog));
+	gtk_widget_show(GTK_WIDGET(gui.window));
+	gtk_widget_show(GTK_WIDGET(gui.dialog));
 
 	callbacks_init();
 	test_init();
