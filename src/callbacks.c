@@ -40,10 +40,11 @@ static bool on_window_delete_event(void)
 {
 #if GTK_CHECK_VERSION(4,0,0)
 	gtk_widget_set_visible(GTK_WIDGET(gui.window), false);
+	g_application_quit(g_application_get_default());
 #else
 	gtk_widget_hide(GTK_WIDGET(gui.window));
-#endif
 	gtk_main_quit();
+#endif
 
 	return true;
 }
@@ -248,10 +249,11 @@ static void on_menuitem_quit_activate(void)
 {
 #if GTK_CHECK_VERSION(4,0,0)
 	gtk_widget_set_visible(GTK_WIDGET(gui.window), false);
+	g_application_quit(g_application_get_default());
 #else
 	gtk_widget_hide(GTK_WIDGET(gui.window));
-#endif
 	gtk_main_quit();
+#endif
 }
 
 static void on_menuitem_edit_activate(void)

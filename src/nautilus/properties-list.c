@@ -247,7 +247,12 @@ void gtkhash_properties_list_refilter(struct page_s *page)
 	GtkTreeModelFilter *filter = gtkhash_properties_list_get_filter(page);
 	gtk_tree_model_filter_refilter(filter);
 
+#if GTK_CHECK_VERSION(4,0,0)
+	bool active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->menuitem_show_funcs));
+#else
 	bool active = gtk_check_menu_item_get_active(page->menuitem_show_funcs);
+#endif
+
 	GtkTreeViewColumn *col = gtk_tree_view_get_column(page->treeview, 0);
 	gtk_tree_view_column_set_visible(col, active);
 
@@ -260,8 +265,13 @@ static gboolean gtkhash_properties_list_filter(GtkTreeModel *model,
 	gboolean enabled;
 	gtk_tree_model_get(model, iter, COL_ENABLED, &enabled, -1);
 
+#if GTK_CHECK_VERSION(4,0,0)
+	if (!enabled && !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(page->menuitem_show_funcs)))
+		return false;
+#else
 	if (!enabled && !gtk_check_menu_item_get_active(page->menuitem_show_funcs))
 		return false;
+#endif
 
 	return true;
 }
