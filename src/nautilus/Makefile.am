@@ -10,9 +10,13 @@ common_libadd = \
 	../util/util.la \
 	$(GTK_LIBS)
 
-BUILT_SOURCES = properties-resources.c
+BUILT_SOURCES = properties-resources.c \
+	libgtkhash-properties-caja.ver \
+	libgtkhash-properties-nautilus.ver \
+	libgtkhash-properties-nemo.ver \
+	libgtkhash-properties-thunar.ver
 
-CLEANFILES = properties-resources.c *.gcda *.gcno
+CLEANFILES = properties-resources.c *.gcda *.gcno *.ver
 
 EXTRA_DIST = \
 	meson.build \
@@ -49,7 +53,7 @@ libgtkhash_properties_caja_la_CFLAGS = $(GTKHASH_CFLAGS)
 
 libgtkhash_properties_caja_la_LDFLAGS = \
 	$(common_ldflags) \
-	-export-symbols-regex ^caja_module_
+	-Wl,--version-script=libgtkhash-properties-caja.ver
 
 libgtkhash_properties_caja_la_LIBADD = \
 	$(common_libadd) \
@@ -80,7 +84,7 @@ libgtkhash_properties_nautilus_la_CFLAGS = $(GTKHASH_CFLAGS)
 
 libgtkhash_properties_nautilus_la_LDFLAGS = \
 	$(common_ldflags) \
-	-export-symbols-regex ^nautilus_module_
+	-Wl,--version-script=libgtkhash-properties-nautilus.ver
 
 libgtkhash_properties_nautilus_la_LIBADD = \
 	$(common_libadd) \
@@ -111,7 +115,7 @@ libgtkhash_properties_nemo_la_CFLAGS = $(GTKHASH_CFLAGS)
 
 libgtkhash_properties_nemo_la_LDFLAGS = \
 	$(common_ldflags) \
-	-export-symbols-regex ^nemo_module_
+	-Wl,--version-script=libgtkhash-properties-nemo.ver
 
 libgtkhash_properties_nemo_la_LIBADD = \
 	$(common_libadd) \
@@ -142,13 +146,25 @@ libgtkhash_properties_thunar_la_CFLAGS = $(GTKHASH_CFLAGS)
 
 libgtkhash_properties_thunar_la_LDFLAGS = \
 	$(common_ldflags) \
-	-export-symbols-regex ^thunar_extension_
+	-Wl,--version-script=libgtkhash-properties-thunar.ver
 
 libgtkhash_properties_thunar_la_LIBADD = \
 	$(common_libadd) \
 	$(THUNAR_LIBS)
 
 endif
+
+libgtkhash-properties-caja.ver:
+	$(AM_V_GEN)printf "{\nglobal:\n\tcaja_module_*;\nlocal:\n\t*;\n};\n" > $@
+
+libgtkhash-properties-nautilus.ver:
+	$(AM_V_GEN)printf "{\nglobal:\n\tnautilus_module_*;\nlocal:\n\t*;\n};\n" > $@
+
+libgtkhash-properties-nemo.ver:
+	$(AM_V_GEN)printf "{\nglobal:\n\tnemo_module_*;\nlocal:\n\t*;\n};\n" > $@
+
+libgtkhash-properties-thunar.ver:
+	$(AM_V_GEN)printf "{\nglobal:\n\tthunar_extension_*;\nlocal:\n\t*;\n};\n" > $@
 
 properties-resources.c: $(properties_resource_xml) $(properties_ui)
 	$(AM_V_GEN) $(GLIB_COMPILE_RESOURCES) \
