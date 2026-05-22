@@ -152,7 +152,11 @@ void gtkhash_properties_list_clear_digests(struct page_s *page)
 
 void gtkhash_properties_list_check_digests(struct page_s *page)
 {
+#if GTK_CHECK_VERSION(4, 0, 0)
+	const char *check = gtk_editable_get_text(GTK_EDITABLE(page->entry_check));
+#else
 	const char *check = gtk_entry_get_text(page->entry_check);
+#endif
 	const char *icon = NULL;
 
 	GtkTreeModel *model = gtkhash_properties_list_get_model(page);
@@ -170,8 +174,13 @@ void gtkhash_properties_list_check_digests(struct page_s *page)
 		} while (!icon && gtk_tree_model_iter_next(model, &iter));
 	}
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+	/* GtkEntry no longer has secondary icons in GTK4; match indication is lost */
+	(void)icon;
+#else
 	gtk_entry_set_icon_from_icon_name(page->entry_check,
 		GTK_ENTRY_ICON_SECONDARY, icon);
+#endif
 }
 
 void gtkhash_properties_list_set_digest(struct page_s *page,
@@ -231,8 +240,13 @@ bool gtkhash_properties_list_hash_selected(struct page_s *page)
 	gtk_tree_model_get(model, &iter, COL_ID, &id, -1);
 
 	if (gtk_toggle_button_get_active(page->togglebutton_hmac)) {
+#if GTK_CHECK_VERSION(4, 0, 0)
+		const uint8_t *hmac_key = (uint8_t *)gtk_editable_get_text(
+			GTK_EDITABLE(page->entry_hmac));
+#else
 		const uint8_t *hmac_key = (uint8_t *)gtk_entry_get_text(
 			page->entry_hmac);
+#endif
 		GtkEntryBuffer *buffer = gtk_entry_get_buffer(page->entry_hmac);
 		const size_t key_size = gtk_entry_buffer_get_bytes(buffer);
 		gtkhash_properties_hash_start(page, &page->funcs[id], hmac_key, key_size);
