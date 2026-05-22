@@ -61,7 +61,11 @@ int main(int argc, char **argv)
 
 	opts_preinit(&argc, &argv);
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+	gtk_init();
+#else
 	gtk_init(NULL, NULL);
+#endif
 
 	gui_init();
 	prefs_init();

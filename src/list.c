@@ -86,11 +86,21 @@ void list_init(void)
 
 	gtk_tree_view_set_model(gui.treeview, gui.treemodel);
 
+#if !GTK_CHECK_VERSION(4, 0, 0)
 	const GtkTargetEntry targets[] = {
 		{ (char *)"text/uri-list", 0, 0 }
 	};
 	gtk_drag_dest_set(GTK_WIDGET(gui.treeview), GTK_DEST_DEFAULT_ALL, targets,
 		G_N_ELEMENTS(targets), GDK_ACTION_COPY);
+#else
+	/* GTK4 DND implementation placeholder:
+	 * Use GtkDropTarget with a suitable GType/content format for file URIs.
+	 * Example (to be completed):
+	 * GtkDropTarget *drop_target = gtk_drop_target_new(G_TYPE_FILE, GDK_ACTION_COPY);
+	 * gtk_widget_add_controller(GTK_WIDGET(gui.treeview), GTK_EVENT_CONTROLLER(drop_target));
+	 * g_signal_connect(drop_target, "drop", G_CALLBACK(on_drop), NULL);
+	 */
+#endif
 }
 
 void list_update(void)

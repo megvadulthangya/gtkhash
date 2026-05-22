@@ -130,7 +130,9 @@ void opts_preinit(int *argc, char ***argv)
 	GError *error = NULL;
 
 	g_option_context_add_main_entries(context, entries, GETTEXT_PACKAGE);
+#if !GTK_CHECK_VERSION(4, 0, 0)
 	g_option_context_add_group(context, gtk_get_option_group(false));
+#endif
 	g_option_context_parse(context, argc, argv, &error);
 	g_option_context_free(context);
 
