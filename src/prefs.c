@@ -83,10 +83,10 @@ static void default_hash_funcs(void)
 	exit(EXIT_FAILURE);
 }
 
-#if GTK_CHECK_VERSION(4, 0, 0)
+#if GTK_MAJOR_VERSION >= 4
 static void default_show_widgets(void)
 {
-	/* GTK4: GtkCheckMenuItem removed, do nothing */
+	/* GTK4: GtkCheckMenuItem removed */
 	return;
 }
 #else
@@ -174,10 +174,10 @@ static void load_show_widgets(void)
 		gui.menuitem_treeview_show_toolbar, "active", PREFS_BIND_FLAGS);
 }
 
-#if GTK_CHECK_VERSION(4, 0, 0)
+#if GTK_MAJOR_VERSION >= 4
 static void load_window_size(void)
 {
-	/* GTK4: gtk_window_resize removed, stub */
+	/* GTK4: gtk_window_resize removed */
 	return;
 }
 #else
@@ -270,10 +270,10 @@ static void save_view(void)
 	g_settings_set_string(prefs_priv.settings, PREFS_KEY_VIEW, str);
 }
 
-#if GTK_CHECK_VERSION(4, 0, 0)
+#if GTK_MAJOR_VERSION >= 4
 static void save_window_size(void)
 {
-	/* GTK4: gtk_window_get_size removed, stub */
+	/* GTK4: gtk_window_get_size removed */
 	return;
 }
 #else
