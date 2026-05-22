@@ -220,6 +220,7 @@ static void gtkhash_properties_on_treeview_row_activated(
 
 #endif
 
+#if !GTK_CHECK_VERSION(4, 0, 0)
 static void gtkhash_properties_on_menu_map_event(struct page_s *page)
 {
     bool sensitive = false;
@@ -233,6 +234,7 @@ static void gtkhash_properties_on_menu_map_event(struct page_s *page)
 
     gtk_widget_set_sensitive(GTK_WIDGET(page->menuitem_copy), sensitive);
 }
+#endif
 
 static void gtkhash_properties_on_menuitem_copy_activate(struct page_s *page)
 {
@@ -539,7 +541,7 @@ static void gtkhash_properties_connect_signals(struct page_s *page)
         "clicked",
         G_CALLBACK(
             gtkhash_properties_on_menuitem_copy_activate),
-        page);
+            page);
 
     g_signal_connect_swapped(page->menuitem_show_funcs,
         "toggled",
@@ -663,10 +665,9 @@ static GList *gtkhash_properties_get_models(
     if (!page)
         return NULL;
 
-    NautilusPropertiesModel *model =
-        nautilus_properties_model_new_for_widget(
-            _("Checksums"),
-            page->box);
+    NautilusPropertiesModel *model = nautilus_properties_model_new();
+    nautilus_properties_model_set_title(model, _("Checksums"));
+    nautilus_properties_model_set_widget(model, page->box);
 
     return g_list_append(NULL, model);
 }
