@@ -75,6 +75,10 @@ compiler_options = [
 ]
 add_project_arguments(cc.get_supported_arguments(compiler_options), language: 'c')
 
+# Allow the GTK4 migration to proceed by not treating deprecation warnings as errors.
+# This ensures the compiler continues after reporting deprecated GTK calls.
+add_project_arguments('-Wno-error=deprecated-declarations', language: 'c')
+
 ################################################################################
 # Dependencies
 
