@@ -1,20 +1,20 @@
 /*
- *   Copyright (C) 2007-2020 Tristan Heaven <tristan@tristanheaven.net>
+ * Copyright (C) 2007-2020 Tristan Heaven <tristan@tristanheaven.net>
  *
- *   This file is part of GtkHash.
+ * This file is part of GtkHash.
  *
- *   GtkHash is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ * GtkHash is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
  *
- *   GtkHash is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *   GNU General Public License for more details.
+ * GtkHash is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with GtkHash. If not, see <https://gnu.org/licenses/gpl-2.0.txt>.
+ * You should have received a copy of the GNU General Public License
+ * along with GtkHash. If not, see <https://gnu.org/licenses/gpl-2.0.txt>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -72,6 +72,7 @@ static void gui_init_objects(GtkBuilder *builder)
     gui.window = GTK_WINDOW(gui_get_object(builder,
         "window"));
 
+#if !GTK_CHECK_VERSION(4, 0, 0)
     // Menus
     gui.menuitem_open = GTK_MENU_ITEM(gui_get_object(builder,
         "menuitem_open"));
@@ -111,6 +112,7 @@ static void gui_init_objects(GtkBuilder *builder)
         "toolbutton_remove"));
     gui.toolbutton_clear = GTK_TOOL_BUTTON(gui_get_object(builder,
         "toolbutton_clear"));
+#endif
 
     // Containers
     gui.vbox_single = GTK_BOX(gui_get_object(builder,
@@ -129,8 +131,13 @@ static void gui_init_objects(GtkBuilder *builder)
         "vbox_digests_text"));
 
     // Inputs
+#if GTK_CHECK_VERSION(4, 0, 0)
+    gui.filechooserbutton = GTK_FILE_CHOOSER(gui_get_object(builder,
+        "filechooserbutton"));
+#else
     gui.filechooserbutton = GTK_FILE_CHOOSER_BUTTON(gui_get_object(builder,
         "filechooserbutton"));
+#endif
     gui.entry_text = GTK_ENTRY(gui_get_object(builder,
         "entry_text"));
     gui.entry_check_file = GTK_ENTRY(gui_get_object(builder,
@@ -157,6 +164,7 @@ static void gui_init_objects(GtkBuilder *builder)
         "treeview"));
     gui.treeselection = GTK_TREE_SELECTION(gui_get_object(builder,
         "treeselection"));
+#if !GTK_CHECK_VERSION(4, 0, 0)
     gui.menu_treeview = GTK_MENU(gui_get_object(builder,
         "menu_treeview"));
     g_object_ref(gui.menu_treeview);
@@ -172,6 +180,7 @@ static void gui_init_objects(GtkBuilder *builder)
         "menuitem_treeview_copy"));
     gui.menuitem_treeview_show_toolbar = GTK_MENU_ITEM(gui_get_object(builder,
         "menuitem_treeview_show_toolbar"));
+#endif
 
     // Buttons
     gui.hseparator_buttons = GTK_SEPARATOR(gui_get_object(builder,
@@ -205,10 +214,20 @@ static void gui_init_hash_funcs(void)
             continue;
 
         // File view func labels
+#if GTK_CHECK_VERSION(4, 0, 0)
+        gui.hash_widgets[i].label_file = GTK_BUTTON(gtk_button_new());
+        gtk_button_set_has_frame(GTK_BUTTON(gui.hash_widgets[i].label_file), TRUE);
+#else
         gui.hash_widgets[i].label_file = GTK_MODEL_BUTTON(gtk_model_button_new());
         gtk_button_set_relief(GTK_BUTTON(gui.hash_widgets[i].label_file),
             GTK_RELIEF_NORMAL);
+#endif
         gtk_widget_set_can_focus(GTK_WIDGET(gui.hash_widgets[i].label_file), false);
+#if GTK_CHECK_VERSION(4, 0, 0)
+        gtk_box_append(GTK_BOX(gui.vbox_outputlabels),
+            GTK_WIDGET(gui.hash_widgets[i].label_file));
+        gtk_widget_set_halign(GTK_WIDGET(gui.hash_widgets[i].label_file), GTK_ALIGN_START);
+#else
         gtk_container_add(GTK_CONTAINER(gui.vbox_outputlabels),
             GTK_WIDGET(gui.hash_widgets[i].label_file));
         GValue xalign = G_VALUE_INIT;
@@ -216,18 +235,29 @@ static void gui_init_hash_funcs(void)
         g_value_set_float(&xalign, 0);
         g_object_set_property(G_OBJECT(gui.hash_widgets[i].label_file),
             "xalign", &xalign);
+#endif
 
         // Text view func labels
         gui.hash_widgets[i].label_text = GTK_LABEL(gtk_label_new(NULL));
         gtk_widget_set_halign(GTK_WIDGET(gui.hash_widgets[i].label_text),
             GTK_ALIGN_START);
+#if GTK_CHECK_VERSION(4, 0, 0)
+        gtk_box_append(GTK_BOX(gui.vbox_outputlabels),
+            GTK_WIDGET(gui.hash_widgets[i].label_text));
+#else
         gtk_container_add(GTK_CONTAINER(gui.vbox_outputlabels),
             GTK_WIDGET(gui.hash_widgets[i].label_text));
+#endif
 
         // File view digests
         gui.hash_widgets[i].entry_file = GTK_ENTRY(gtk_entry_new());
+#if GTK_CHECK_VERSION(4, 0, 0)
+        gtk_box_append(GTK_BOX(gui.vbox_digests_file),
+            GTK_WIDGET(gui.hash_widgets[i].entry_file));
+#else
         gtk_container_add(GTK_CONTAINER(gui.vbox_digests_file),
             GTK_WIDGET(gui.hash_widgets[i].entry_file));
+#endif
         gtk_editable_set_editable(GTK_EDITABLE(gui.hash_widgets[i].entry_file),
             false);
         gtk_entry_set_icon_activatable(gui.hash_widgets[i].entry_file,
@@ -235,18 +265,25 @@ static void gui_init_hash_funcs(void)
 
         // Text view digests
         gui.hash_widgets[i].entry_text = GTK_ENTRY(gtk_entry_new());
+#if GTK_CHECK_VERSION(4, 0, 0)
+        gtk_box_append(GTK_BOX(gui.vbox_digests_text),
+            GTK_WIDGET(gui.hash_widgets[i].entry_text));
+#else
         gtk_container_add(GTK_CONTAINER(gui.vbox_digests_text),
             GTK_WIDGET(gui.hash_widgets[i].entry_text));
+#endif
         gtk_editable_set_editable(GTK_EDITABLE(gui.hash_widgets[i].entry_text),
             false);
         gtk_entry_set_icon_activatable(gui.hash_widgets[i].entry_text,
             GTK_ENTRY_ICON_SECONDARY, false);
 
+#if !GTK_CHECK_VERSION(4, 0, 0)
         // File list treeview popup menu
         gui.hash_widgets[i].menuitem_treeview_copy =
             GTK_MENU_ITEM(gtk_menu_item_new_with_label(hash.funcs[i].name));
         gtk_menu_shell_append(GTK_MENU_SHELL(gui.menu_treeview_copy),
             GTK_WIDGET(gui.hash_widgets[i].menuitem_treeview_copy));
+#endif
 
         // Dialog checkbuttons
         gui.hash_widgets[i].button = GTK_TOGGLE_BUTTON(
@@ -358,10 +395,23 @@ unsigned int gui_add_ud_list(GSList *ud_list, const enum gui_view_e view)
 
     if (readable_len && (gui.view == GUI_VIEW_FILE)) {
         struct uri_digest_s *ud = readable->data;
+#if GTK_CHECK_VERSION(4, 0, 0)
+        GFile *file = g_file_new_for_uri(ud->uri);
+        if (file) {
+            gtk_file_chooser_set_file(GTK_FILE_CHOOSER(gui.filechooserbutton), file, NULL);
+            g_object_unref(file);
+        }
+#else
         gtk_file_chooser_set_uri(GTK_FILE_CHOOSER(gui.filechooserbutton),
             ud->uri);
-        if (ud->digest)
+#endif
+        if (ud->digest) {
+#if GTK_CHECK_VERSION(4, 0, 0)
+            gtk_editable_set_text(GTK_EDITABLE(gui.entry_check_file), ud->digest);
+#else
             gtk_entry_set_text(gui.entry_check_file, ud->digest);
+#endif
+        }
     } else if (readable_len && (gui.view == GUI_VIEW_FILE_LIST)) {
         GSList *tmp = readable;
         do {
@@ -380,15 +430,24 @@ void gui_add_check(const char *check)
 {
     g_assert(check && *check);
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+    gtk_editable_set_text(GTK_EDITABLE(gui.entry_check_file), check);
+    gtk_editable_set_text(GTK_EDITABLE(gui.entry_check_text), check);
+#else
     gtk_entry_set_text(gui.entry_check_file, check);
     gtk_entry_set_text(gui.entry_check_text, check);
+#endif
 }
 
 void gui_add_text(const char *text)
 {
     g_assert(text);
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+    gtk_editable_set_text(GTK_EDITABLE(gui.entry_text), text);
+#else
     gtk_entry_set_text(gui.entry_text, text);
+#endif
 
     gui_set_view(GUI_VIEW_TEXT);
     gui_update();
@@ -401,8 +460,13 @@ void gui_error(const char *message)
     GtkWidget *dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL,
         GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE, "%s", message);
     gtk_window_set_title(GTK_WINDOW(dialog), PACKAGE_NAME);
+#if GTK_CHECK_VERSION(4, 0, 0)
+    g_signal_connect_swapped(dialog, "response", G_CALLBACK(gtk_window_destroy), dialog);
+    gtk_widget_set_visible(dialog, TRUE);
+#else
     gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
+#endif
 }
 
 void gui_run(void)
@@ -422,20 +486,43 @@ void gui_run(void)
     // Connect signals to start handling events
     callbacks_init();
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+    while (gtk_widget_get_visible(GTK_WIDGET(gui.window))) {
+        g_main_context_iteration(NULL, TRUE);
+    }
+
+    hash_file_stop();
+    while (gui_priv.state != GUI_STATE_IDLE) {
+        while (g_main_context_pending(NULL)) {
+            g_main_context_iteration(NULL, FALSE);
+        }
+    }
+#else
     gtk_main();
 
     hash_file_stop();
     while (gui_priv.state != GUI_STATE_IDLE)
         gtk_main_iteration();
+#endif
 }
 
 void gui_deinit(void)
 {
+#if GTK_CHECK_VERSION(4, 0, 0)
+    gtk_window_destroy(GTK_WINDOW(gui.window));
+#else
     gtk_widget_destroy(GTK_WIDGET(gui.window));
     g_object_unref(gui.menu_treeview);
+#endif
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+    while (g_main_context_pending(NULL)) {
+        g_main_context_iteration(NULL, FALSE);
+    }
+#else
     while (gtk_events_pending())
         gtk_main_iteration();
+#endif
 }
 
 void gui_set_view(const enum gui_view_e view)
@@ -447,34 +534,24 @@ void gui_set_view(const enum gui_view_e view)
 
     gui.view = view;
 
+#if !GTK_CHECK_VERSION(4, 0, 0)
     switch (view) {
         case GUI_VIEW_FILE:
-#if GTK_CHECK_VERSION(4, 0, 0)
-            gtk_check_button_set_active(GTK_CHECK_BUTTON(gui.radiomenuitem_file), TRUE);
-#else
             gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(
                 gui.radiomenuitem_file), true);
-#endif
             break;
         case GUI_VIEW_TEXT:
-#if GTK_CHECK_VERSION(4, 0, 0)
-            gtk_check_button_set_active(GTK_CHECK_BUTTON(gui.radiomenuitem_text), TRUE);
-#else
             gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(
                 gui.radiomenuitem_text), true);
-#endif
             break;
         case GUI_VIEW_FILE_LIST:
-#if GTK_CHECK_VERSION(4, 0, 0)
-            gtk_check_button_set_active(GTK_CHECK_BUTTON(gui.radiomenuitem_file_list), TRUE);
-#else
             gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(
                 gui.radiomenuitem_file_list), true);
-#endif
             break;
         default:
             g_assert_not_reached();
     }
+#endif
 }
 
 void gui_set_digest_format(const enum digest_format_e format)
@@ -538,7 +615,9 @@ const uint8_t *gui_get_hmac_key(size_t *key_size)
 static void gui_menuitem_save_as_set_sensitive(void)
 {
     if (gui_priv.state == GUI_STATE_BUSY) {
+#if !GTK_CHECK_VERSION(4, 0, 0)
         gtk_widget_set_sensitive(GTK_WIDGET(gui.menuitem_save_as), false);
+#endif
         return;
     }
 
@@ -583,7 +662,9 @@ static void gui_menuitem_save_as_set_sensitive(void)
             sensitive = false;
     }
 
+#if !GTK_CHECK_VERSION(4, 0, 0)
     gtk_widget_set_sensitive(GTK_WIDGET(gui.menuitem_save_as), sensitive);
+#endif
 }
 
 void gui_enable_hash_func(const enum hash_func_e id)
@@ -636,8 +717,10 @@ void gui_update_hash_funcs(void)
             hash.funcs[i].enabled);
         gtk_widget_set_visible(GTK_WIDGET(gui.hash_widgets[i].entry_text),
             hash.funcs[i].enabled);
+#if !GTK_CHECK_VERSION(4, 0, 0)
         gtk_widget_set_visible(GTK_WIDGET(gui.hash_widgets[i].menuitem_treeview_copy),
             hash.funcs[i].enabled);
+#endif
     }
 }
 
@@ -709,7 +792,6 @@ void gui_update(void)
         gui_update_hmac();
 
 #if GTK_CHECK_VERSION(4, 0, 0)
-        gtk_widget_set_visible(GTK_WIDGET(gui.toolbar), FALSE);
         gtk_widget_set_visible(GTK_WIDGET(gui.vbox_list), FALSE);
         gtk_widget_set_visible(GTK_WIDGET(gui.vbox_single), TRUE);
 #else
@@ -808,11 +890,8 @@ void gui_update(void)
             gtk_widget_show(GTK_WIDGET(gui.button_hash));
 #endif
 
+#if !GTK_CHECK_VERSION(4, 0, 0)
             gtk_widget_set_visible(GTK_WIDGET(gui.toolbar),
-#if GTK_CHECK_VERSION(4, 0, 0)
-                gtk_check_button_get_active(GTK_CHECK_BUTTON(
-                    gui.menuitem_treeview_show_toolbar)));
-#else
                 gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(
                     gui.menuitem_treeview_show_toolbar)));
 #endif
@@ -832,7 +911,11 @@ void gui_clear_digests(void)
             for (int i = 0; i < HASH_FUNCS_N; i++) {
                 if (!hash.funcs[i].supported)
                     continue;
+#if GTK_CHECK_VERSION(4, 0, 0)
+                gtk_editable_set_text(GTK_EDITABLE(gui.hash_widgets[i].entry_file), "");
+#else
                 gtk_entry_set_text(gui.hash_widgets[i].entry_file, "");
+#endif
             }
             gui_check_digests();
             break;
@@ -840,7 +923,11 @@ void gui_clear_digests(void)
             for (int i = 0; i < HASH_FUNCS_N; i++) {
                 if (!hash.funcs[i].supported)
                     continue;
+#if GTK_CHECK_VERSION(4, 0, 0)
+                gtk_editable_set_text(GTK_EDITABLE(gui.hash_widgets[i].entry_text), "");
+#else
                 gtk_entry_set_text(gui.hash_widgets[i].entry_text, "");
+#endif
             }
             gui_check_digests();
             break;
@@ -939,13 +1026,17 @@ void gui_set_state(const enum gui_state_e state)
 
     gtk_widget_set_sensitive(GTK_WIDGET(gui.hbox_input), !busy);
     gtk_widget_set_sensitive(GTK_WIDGET(gui.hbox_output), !busy);
+#if !GTK_CHECK_VERSION(4, 0, 0)
     gtk_widget_set_sensitive(GTK_WIDGET(gui.toolbar), !busy);
+#endif
     gtk_widget_set_sensitive(GTK_WIDGET(gui.treeview), !busy);
 
+#if !GTK_CHECK_VERSION(4, 0, 0)
     gtk_widget_set_sensitive(GTK_WIDGET(gui.menuitem_open), !busy);
     gtk_widget_set_sensitive(GTK_WIDGET(gui.radiomenuitem_text), !busy);
     gtk_widget_set_sensitive(GTK_WIDGET(gui.radiomenuitem_file), !busy);
     gtk_widget_set_sensitive(GTK_WIDGET(gui.radiomenuitem_file_list), !busy);
+#endif
 
     gtk_widget_set_sensitive(GTK_WIDGET(gui.dialog_grid), !busy);
     gtk_widget_set_sensitive(GTK_WIDGET(gui.dialog_togglebutton_show_hmac), !busy);
