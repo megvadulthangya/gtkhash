@@ -192,6 +192,17 @@ static void gtkhash_properties_on_menuitem_copy_activate(struct page_s *page) {
     g_free(digest);
 }
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+static void gtkhash_properties_on_show_funcs_action(GSimpleAction *action, GVariant *state, struct page_s *page) {
+    g_simple_action_set_state(action, state);
+    gboolean active = g_variant_get_boolean(state);
+    g_signal_handlers_block_by_func(page->menuitem_show_funcs, gtkhash_properties_on_menuitem_show_funcs_toggled, page);
+    gtk_check_button_set_active(page->menuitem_show_funcs, active);
+    g_signal_handlers_unblock_by_func(page->menuitem_show_funcs, gtkhash_properties_on_menuitem_show_funcs_toggled, page);
+    gtkhash_properties_list_refilter(page);
+}
+#endif
+
 static void gtkhash_properties_on_menuitem_show_funcs_toggled(struct page_s *page) {
     gtkhash_properties_list_refilter(page);
 }
@@ -297,9 +308,37 @@ static void gtkhash_properties_init_objects(struct page_s *page, GtkBuilder *bui
     page->menuitem_copy = GTK_MENU_ITEM(gtkhash_properties_get_object(builder, "imagemenuitem_copy"));
     page->menuitem_show_funcs = GTK_CHECK_MENU_ITEM(gtkhash_properties_get_object(builder, "checkmenuitem_show_funcs"));
 #else
-    page->menu = GTK_POPOVER_MENU(gtk_popover_menu_new_from_model(G_MENU_MODEL(g_menu_new())));
-    page->menuitem_copy = gtk_button_new_with_label(_("Copy"));
+    /* GTK4: construct a GMenu with actions for the popover */
+    page->menuitem_copy = NULL;  /* not used, action-based */
     page->menuitem_show_funcs = GTK_CHECK_BUTTON(gtk_check_button_new_with_label(_("Show Disabled Hash Functions")));
+
+    GMenu *menu_model = g_menu_new();
+    GMenuItem *menu_item;
+
+    menu_item = g_menu_item_new(_("Copy Digest"), "page.copy");
+    g_menu_append_item(menu_model, menu_item);
+    g_object_unref(menu_item);
+
+    menu_item = g_menu_item_new(_("Show Disabled Hash Functions"), "page.show-funcs");
+    g_menu_append_item(menu_model, menu_item);
+    g_object_unref(menu_item);
+
+    page->menu = GTK_POPOVER_MENU(gtk_popover_menu_new_from_model(G_MENU_MODEL(menu_model)));
+    g_object_unref(menu_model);
+
+    GSimpleActionGroup *action_group = g_simple_action_group_new();
+    GSimpleAction *act_copy = g_simple_action_new("copy", NULL);
+    g_signal_connect_swapped(act_copy, "activate", G_CALLBACK(gtkhash_properties_on_menuitem_copy_activate), page);
+    g_simple_action_group_insert(action_group, G_ACTION(act_copy));
+    g_object_unref(act_copy);
+
+    GSimpleAction *act_show = g_simple_action_new_stateful("show-funcs", NULL, g_variant_new_boolean(FALSE));
+    g_signal_connect(act_show, "change-state", G_CALLBACK(gtkhash_properties_on_show_funcs_action), page);
+    g_simple_action_group_insert(action_group, G_ACTION(act_show));
+    g_object_unref(act_show);
+
+    gtk_widget_insert_action_group(GTK_WIDGET(page->treeview), "page", G_ACTION_GROUP(action_group));
+    g_object_set_data(G_OBJECT(page->treeview), "gtkhash-action-group", action_group);
 #endif
     page->hbox_inputs = GTK_WIDGET(gtkhash_properties_get_object(builder, "hbox_inputs"));
     page->entry_check = GTK_ENTRY(gtkhash_properties_get_object(builder, "entry_check"));
@@ -325,7 +364,11 @@ static void gtkhash_properties_connect_signals(struct page_s *page) {
 #if !GTK_CHECK_VERSION(4, 0, 0)
     g_signal_connect_swapped(page->treeview, "row-activated", G_CALLBACK(gtkhash_properties_on_treeview_row_activated), page);
 #endif
+#if !GTK_CHECK_VERSION(4, 0, 0)
     g_signal_connect_swapped(page->menuitem_copy, "clicked", G_CALLBACK(gtkhash_properties_on_menuitem_copy_activate), page);
+#else
+    /* GTK4: copy action is connected in init_objects */
+#endif
     g_signal_connect_swapped(page->menuitem_show_funcs, "toggled", G_CALLBACK(gtkhash_properties_on_menuitem_show_funcs_toggled), page);
     g_signal_connect_swapped(page->entry_check, "changed", G_CALLBACK(gtkhash_properties_on_entry_check_changed), page);
 #if !GTK_CHECK_VERSION(4, 0, 0)
@@ -356,6 +399,12 @@ static struct page_s *gtkhash_properties_new_page(char *uri) {
     gtkhash_properties_init_objects(page, builder);
     g_object_unref(builder);
     gtkhash_properties_prefs_init(page);
+#if GTK_CHECK_VERSION(4, 0, 0)
+    /* sync action state with prefs-loaded check button */
+    GSimpleActionGroup *action_group = g_object_get_data(G_OBJECT(page->treeview), "gtkhash-action-group");
+    gboolean show_disabled = gtk_check_button_get_active(page->menuitem_show_funcs);
+    g_action_group_change_action_state(G_ACTION_GROUP(action_group), "show-funcs", g_variant_new_boolean(show_disabled));
+#endif
     gtkhash_properties_list_init(page);
     gtkhash_properties_idle(page);
     gtkhash_properties_connect_signals(page);
@@ -373,7 +422,7 @@ static GList *gtkhash_properties_get_models(G_GNUC_UNUSED NautilusPropertiesMode
     struct page_s *page = gtkhash_properties_new_page(uri);
     if (!page)
         return NULL;
-#if GTK_CHECK_VERSION(4, 0, 0)
+
     GListStore *store = g_list_store_new(NAUTILUS_TYPE_PROPERTIES_ITEM);
     for (int i = 0; i < HASH_FUNCS_N; i++) {
         if (page->funcs[i].enabled) {
@@ -384,12 +433,7 @@ static GList *gtkhash_properties_get_models(G_GNUC_UNUSED NautilusPropertiesMode
     }
     NautilusPropertiesModel *model = nautilus_properties_model_new(_("Checksums"), G_LIST_MODEL(store));
     g_object_unref(store);
-    g_object_set_data_full(G_OBJECT(model), "gtkhash-page-box", page->box, g_object_unref);
-#else
-    NautilusPropertiesModel *model = nautilus_properties_model_new();
-    nautilus_properties_model_set_title(model, _("Checksums"));
     nautilus_properties_model_set_widget(model, page->box);
-#endif
     return g_list_append(NULL, model);
 }
 #else
