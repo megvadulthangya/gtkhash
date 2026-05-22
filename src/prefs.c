@@ -85,11 +85,15 @@ static void default_hash_funcs(void)
 
 static void default_show_widgets(void)
 {
+#if GTK_CHECK_VERSION(4, 0, 0)
+	/* GtkCheckMenuItem removed in GTK4, do nothing */
+#else
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(
 		gui.dialog_togglebutton_show_hmac), false);
 
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(
 		gui.menuitem_treeview_show_toolbar), true);
+#endif
 }
 
 static void prefs_default(void)
@@ -168,6 +172,9 @@ static void load_show_widgets(void)
 
 static void load_window_size(void)
 {
+#if GTK_CHECK_VERSION(4, 0, 0)
+	/* gtk_window_resize removed in GTK4, stub */
+#else
 	if (g_settings_get_boolean(prefs_priv.settings, PREFS_KEY_WINDOW_MAX)) {
 		gtk_window_maximize(gui.window);
 		return;
@@ -178,6 +185,7 @@ static void load_window_size(void)
 
 	if ((width > 0) && (height > 0))
 		gtk_window_resize(gui.window, width, height);
+#endif
 }
 
 static void prefs_load(void)
@@ -256,6 +264,9 @@ static void save_view(void)
 
 static void save_window_size(void)
 {
+#if GTK_CHECK_VERSION(4, 0, 0)
+	/* gtk_window_get_size removed in GTK4, stub */
+#else
 	bool max = gui_is_maximised();
 	g_settings_set_boolean(prefs_priv.settings, PREFS_KEY_WINDOW_MAX, max);
 	if (max)
@@ -266,6 +277,7 @@ static void save_window_size(void)
 
 	g_settings_set_int(prefs_priv.settings, PREFS_KEY_WINDOW_HEIGHT, height);
 	g_settings_set_int(prefs_priv.settings, PREFS_KEY_WINDOW_WIDTH, width);
+#endif
 }
 
 static void prefs_save(void)
