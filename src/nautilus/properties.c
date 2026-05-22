@@ -374,7 +374,17 @@ static GList *gtkhash_properties_get_models(G_GNUC_UNUSED NautilusPropertiesMode
     if (!page)
         return NULL;
 #if GTK_CHECK_VERSION(4, 0, 0)
-    NautilusPropertiesModel *model = nautilus_properties_model_new(_("Checksums"), page->box);
+    GListStore *store = g_list_store_new(NAUTILUS_TYPE_PROPERTIES_ITEM);
+    for (int i = 0; i < HASH_FUNCS_N; i++) {
+        if (page->funcs[i].enabled) {
+            NautilusPropertiesItem *item = nautilus_properties_item_new(hash_get_name(i), "");
+            g_list_store_append(store, item);
+            g_object_unref(item);
+        }
+    }
+    NautilusPropertiesModel *model = nautilus_properties_model_new(_("Checksums"), G_LIST_MODEL(store));
+    g_object_unref(store);
+    g_object_set_data_full(G_OBJECT(model), "gtkhash-page-box", page->box, g_object_unref);
 #else
     NautilusPropertiesModel *model = nautilus_properties_model_new();
     nautilus_properties_model_set_title(model, _("Checksums"));
@@ -470,42 +480,3 @@ static void gtkhash_properties_register_type(GTypeModule *module) {
         NULL
     };
 #if defined(IN_NAUTILUS_EXTENSION) && GTK_CHECK_VERSION(4, 0, 0)
-    g_type_module_add_interface(module, page_type, NAUTILUS_TYPE_PROPERTIES_MODEL_PROVIDER, &pp_iface_info);
-#else
-    g_type_module_add_interface(module, page_type,
-#if defined(IN_NAUTILUS_EXTENSION)
-        NAUTILUS_TYPE_PROPERTY_PAGE_PROVIDER,
-#elif defined(IN_CAJA_EXTENSION)
-        CAJA_TYPE_PROPERTY_PAGE_PROVIDER,
-#elif defined(IN_NEMO_EXTENSION)
-        NEMO_TYPE_PROPERTY_PAGE_PROVIDER,
-#elif defined(IN_THUNAR_EXTENSION)
-        THUNARX_TYPE_PROPERTY_PAGE_PROVIDER,
-#endif
-        &pp_iface_info);
-#endif
-}
-
-#if __GNUC__
-#define PUBLIC __attribute__((visibility("default")))
-#else
-#define PUBLIC G_MODULE_EXPORT
-#endif
-
-PUBLIC void nautilus_module_initialize(GTypeModule *module) {
-    gtkhash_properties_register_type(module);
-#if ENABLE_NLS
-    bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
-    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
-#endif
-}
-
-PUBLIC void nautilus_module_shutdown(void) {
-}
-
-PUBLIC void nautilus_module_list_types(const GType **types, int *num_types) {
-    static GType type_list[1];
-    type_list[0] = page_type;
-    *types = type_list;
-    *num_types = G_N_ELEMENTS(type_list);
-}
