@@ -1,6 +1,145 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface domain="gtkhash">
   <requires lib="gtk" version="4.0"/>
+  
+  <menu id="menubar_model">
+    <submenu>
+      <attribute name="label" translatable="yes">_File</attribute>
+      <item>
+        <attribute name="id">menuitem_open</attribute>
+        <attribute name="label" translatable="yes" context="menu">_Open Digest File…</attribute>
+        <attribute name="action">win.open</attribute>
+        <attribute name="icon">document-open</attribute>
+      </item>
+      <item>
+        <attribute name="id">menuitem_save_as</attribute>
+        <attribute name="label" translatable="yes" context="menu">_Save Digest File…</attribute>
+        <attribute name="action">win.save_as</attribute>
+        <attribute name="icon">document-save-as</attribute>
+      </item>
+      <item>
+        <attribute name="id">menuitem_quit</attribute>
+        <attribute name="label">gtk-quit</attribute>
+        <attribute name="action">app.quit</attribute>
+        <attribute name="icon">application-exit</attribute>
+      </item>
+    </submenu>
+    <submenu>
+      <attribute name="label" translatable="yes">_Edit</attribute>
+      <section>
+        <item>
+          <attribute name="id">menuitem_cut</attribute>
+          <attribute name="label">gtk-cut</attribute>
+          <attribute name="action">win.cut</attribute>
+          <attribute name="icon">edit-cut</attribute>
+        </item>
+        <item>
+          <attribute name="id">menuitem_copy</attribute>
+          <attribute name="label">gtk-copy</attribute>
+          <attribute name="action">win.copy</attribute>
+          <attribute name="icon">edit-copy</attribute>
+        </item>
+        <item>
+          <attribute name="id">menuitem_paste</attribute>
+          <attribute name="label">gtk-paste</attribute>
+          <attribute name="action">win.paste</attribute>
+          <attribute name="icon">edit-paste</attribute>
+        </item>
+        <item>
+          <attribute name="id">menuitem_delete</attribute>
+          <attribute name="label">gtk-delete</attribute>
+          <attribute name="action">win.delete</attribute>
+          <attribute name="icon">edit-delete</attribute>
+        </item>
+      </section>
+      <section>
+        <item>
+          <attribute name="id">menuitem_select_all</attribute>
+          <attribute name="label">gtk-select-all</attribute>
+          <attribute name="action">win.select_all</attribute>
+          <attribute name="icon">edit-select-all</attribute>
+        </item>
+      </section>
+      <section>
+        <item>
+          <attribute name="id">menuitem_prefs</attribute>
+          <attribute name="label">gtk-preferences</attribute>
+          <attribute name="action">app.preferences</attribute>
+          <attribute name="icon">preferences-system</attribute>
+        </item>
+      </section>
+    </submenu>
+    <submenu>
+      <attribute name="label" translatable="yes">_View</attribute>
+      <section>
+        <item>
+          <attribute name="id">radiomenuitem_file</attribute>
+          <attribute name="label" translatable="yes">_File</attribute>
+          <attribute name="action">win.view_mode</attribute>
+          <attribute name="target">file</attribute>
+        </item>
+        <item>
+          <attribute name="id">radiomenuitem_text</attribute>
+          <attribute name="label" translatable="yes">_Text</attribute>
+          <attribute name="action">win.view_mode</attribute>
+          <attribute name="target">text</attribute>
+        </item>
+        <item>
+          <attribute name="id">radiomenuitem_file_list</attribute>
+          <attribute name="label" translatable="yes">File _List</attribute>
+          <attribute name="action">win.view_mode</attribute>
+          <attribute name="target">file_list</attribute>
+        </item>
+      </section>
+    </submenu>
+    <submenu>
+      <attribute name="label" translatable="yes">_Help</attribute>
+      <item>
+        <attribute name="id">menuitem_about</attribute>
+        <attribute name="label">gtk-about</attribute>
+        <attribute name="action">app.about</attribute>
+        <attribute name="icon">help-about</attribute>
+      </item>
+    </submenu>
+  </menu>
+
+  <menu id="menu_treeview_model">
+    <item>
+      <attribute name="id">menuitem_treeview_add</attribute>
+      <attribute name="label">gtk-add</attribute>
+      <attribute name="action">win.treeview_add</attribute>
+      <attribute name="icon">list-add</attribute>
+    </item>
+    <item>
+      <attribute name="id">menuitem_treeview_remove</attribute>
+      <attribute name="label">gtk-remove</attribute>
+      <attribute name="action">win.treeview_remove</attribute>
+      <attribute name="icon">list-remove</attribute>
+    </item>
+    <item>
+      <attribute name="id">menuitem_treeview_clear</attribute>
+      <attribute name="label">gtk-clear</attribute>
+      <attribute name="action">win.treeview_clear</attribute>
+      <attribute name="icon">edit-clear</attribute>
+    </item>
+    <item>
+      <attribute name="id">menuitem_treeview_copy</attribute>
+      <attribute name="label" translatable="yes">Copy _Digest</attribute>
+      <attribute name="action">win.treeview_copy</attribute>
+      <attribute name="icon">edit-copy</attribute>
+    </item>
+    <item>
+      <attribute name="id">menuitem_treeview_show_toolbar</attribute>
+      <attribute name="label" translatable="yes">Show _Toolbar</attribute>
+      <attribute name="action">win.treeview_show_toolbar</attribute>
+    </item>
+  </menu>
+
+  <object class="GtkPopoverMenu" id="menu_treeview">
+    <property name="menu-model">menu_treeview_model</property>
+    <property name="has-arrow">False</property>
+  </object>
+
   <object class="GtkListStore" id="dialog_liststore">
     <columns>
       <column type="gchararray"/>
@@ -17,129 +156,20 @@
       </row>
     </data>
   </object>
+
   <object class="GtkImage" id="image_copy">
-    <property name="visible">True</property>
     <property name="icon_name">edit-copy</property>
   </object>
-  <object class="GtkMenu" id="menu_treeview">
-    <property name="visible">True</property>
-    <child>
-      <object class="GtkMenuItem" id="menuitem_treeview_add">
-        <property name="label">gtk-add</property>
-        <property name="visible">True</property>
-        <child>
-          <object class="GtkBox">
-            <child>
-              <object class="GtkImage">
-                <property name="icon_name">list-add</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="label">gtk-add</property>
-              </object>
-            </child>
-          </object>
-        </child>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem" id="menuitem_treeview_remove">
-        <property name="label">gtk-remove</property>
-        <property name="visible">True</property>
-        <property name="sensitive">False</property>
-        <child>
-          <object class="GtkBox">
-            <child>
-              <object class="GtkImage">
-                <property name="icon_name">list-remove</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="label">gtk-remove</property>
-              </object>
-            </child>
-          </object>
-        </child>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem" id="menuitem_treeview_clear">
-        <property name="label">gtk-clear</property>
-        <property name="visible">True</property>
-        <property name="sensitive">False</property>
-        <child>
-          <object class="GtkBox">
-            <child>
-              <object class="GtkImage">
-                <property name="icon_name">edit-clear</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="label">gtk-clear</property>
-              </object>
-            </child>
-          </object>
-        </child>
-      </object>
-    </child>
-    <child>
-      <object class="GtkSeparatorMenuItem" id="menuitem_treeview_separator1">
-        <property name="visible">True</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem" id="menuitem_treeview_copy">
-        <property name="label" translatable="yes">Copy _Digest</property>
-        <property name="visible">True</property>
-        <property name="sensitive">False</property>
-        <child>
-          <object class="GtkBox">
-            <child>
-              <object class="GtkImage">
-                <property name="icon_name">edit-copy</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="label" translatable="yes">Copy _Digest</property>
-              </object>
-            </child>
-          </object>
-        </child>
-        <child type="submenu">
-          <object class="GtkMenu" id="menu_treeview_copy">
-            <property name="visible">True</property>
-          </object>
-        </child>
-      </object>
-    </child>
-    <child>
-      <object class="GtkSeparatorMenuItem" id="menuitem_treeview_separator2">
-        <property name="visible">True</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkCheckMenuItem" id="menuitem_treeview_show_toolbar">
-        <property name="visible">True</property>
-        <property name="label" translatable="yes">Show _Toolbar</property>
-      </object>
-    </child>
-  </object>
   <object class="GtkImage" id="image_execute">
-    <property name="visible">True</property>
     <property name="icon_name">system-run</property>
   </object>
   <object class="GtkImage" id="image_open">
-    <property name="visible">True</property>
     <property name="icon_name">document-open</property>
   </object>
   <object class="GtkImage" id="image_save_as">
-    <property name="visible">True</property>
     <property name="icon_name">document-save-as</property>
   </object>
+
   <object class="GtkWindow" id="window">
     <property name="title">GtkHash</property>
     <property name="default_width">500</property>
@@ -149,262 +179,8 @@
       <object class="GtkBox" id="vbox">
         <property name="orientation">vertical</property>
         <child>
-          <object class="GtkMenuBar" id="menubar">
-            <child>
-              <object class="GtkMenuItem" id="menuitem_file">
-                <property name="label" translatable="yes">_File</property>
-                <child type="submenu">
-                  <object class="GtkMenu" id="menu_file">
-                    <child>
-                      <object class="GtkMenuItem" id="menuitem_open">
-                        <property name="label" translatable="yes" context="menu">_Open Digest File…</property>
-                        <child>
-                          <object class="GtkBox">
-                            <child>
-                              <object class="GtkImage">
-                                <property name="icon_name">document-open</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label" translatable="yes" context="menu">_Open Digest File…</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkMenuItem" id="menuitem_save_as">
-                        <property name="label" translatable="yes" context="menu">_Save Digest File…</property>
-                        <property name="sensitive">False</property>
-                        <child>
-                          <object class="GtkBox">
-                            <child>
-                              <object class="GtkImage">
-                                <property name="icon_name">document-save-as</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label" translatable="yes" context="menu">_Save Digest File…</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkSeparatorMenuItem"/>
-                    </child>
-                    <child>
-                      <object class="GtkMenuItem" id="menuitem_quit">
-                        <property name="label">gtk-quit</property>
-                        <child>
-                          <object class="GtkBox">
-                            <child>
-                              <object class="GtkImage">
-                                <property name="icon_name">application-exit</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label">gtk-quit</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                  </object>
-                </child>
-              </object>
-            </child>
-            <child>
-              <object class="GtkMenuItem" id="menuitem_edit">
-                <property name="label" translatable="yes">_Edit</property>
-                <child type="submenu">
-                  <object class="GtkMenu" id="menu_edit">
-                    <child>
-                      <object class="GtkMenuItem" id="menuitem_cut">
-                        <property name="label">gtk-cut</property>
-                        <child>
-                          <object class="GtkBox">
-                            <child>
-                              <object class="GtkImage">
-                                <property name="icon_name">edit-cut</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label">gtk-cut</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkMenuItem" id="menuitem_copy">
-                        <property name="label">gtk-copy</property>
-                        <child>
-                          <object class="GtkBox">
-                            <child>
-                              <object class="GtkImage">
-                                <property name="icon_name">edit-copy</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label">gtk-copy</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkMenuItem" id="menuitem_paste">
-                        <property name="label">gtk-paste</property>
-                        <child>
-                          <object class="GtkBox">
-                            <child>
-                              <object class="GtkImage">
-                                <property name="icon_name">edit-paste</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label">gtk-paste</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkMenuItem" id="menuitem_delete">
-                        <property name="label">gtk-delete</property>
-                        <child>
-                          <object class="GtkBox">
-                            <child>
-                              <object class="GtkImage">
-                                <property name="icon_name">edit-delete</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label">gtk-delete</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkSeparatorMenuItem"/>
-                    </child>
-                    <child>
-                      <object class="GtkMenuItem" id="menuitem_select_all">
-                        <property name="label">gtk-select-all</property>
-                        <child>
-                          <object class="GtkBox">
-                            <child>
-                              <object class="GtkImage">
-                                <property name="icon_name">edit-select-all</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label">gtk-select-all</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkSeparatorMenuItem"/>
-                    </child>
-                    <child>
-                      <object class="GtkMenuItem" id="menuitem_prefs">
-                        <property name="label">gtk-preferences</property>
-                        <child>
-                          <object class="GtkBox">
-                            <child>
-                              <object class="GtkImage">
-                                <property name="icon_name">preferences-system</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label">gtk-preferences</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                  </object>
-                </child>
-              </object>
-            </child>
-            <child>
-              <object class="GtkMenuItem" id="menuitem_view">
-                <property name="label" translatable="yes">_View</property>
-                <child type="submenu">
-                  <object class="GtkMenu" id="menu_view">
-                    <child>
-                      <object class="GtkCheckMenuItem" id="radiomenuitem_file">
-                        <property name="label" translatable="yes">_File</property>
-                        <property name="active">True</property>
-                        <property name="group">radiomenuitem_file</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkCheckMenuItem" id="radiomenuitem_text">
-                        <property name="label" translatable="yes">_Text</property>
-                        <property name="group">radiomenuitem_file</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkCheckMenuItem" id="radiomenuitem_file_list">
-                        <property name="label" translatable="yes">File _List</property>
-                        <property name="group">radiomenuitem_file</property>
-                      </object>
-                    </child>
-                  </object>
-                </child>
-              </object>
-            </child>
-            <child>
-              <object class="GtkMenuItem" id="menuitem_help">
-                <property name="label" translatable="yes">_Help</property>
-                <child type="submenu">
-                  <object class="GtkMenu" id="menu_help">
-                    <child>
-                      <object class="GtkMenuItem" id="menuitem_about">
-                        <property name="label">gtk-about</property>
-                        <child>
-                          <object class="GtkBox">
-                            <child>
-                              <object class="GtkImage">
-                                <property name="icon_name">help-about</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label">gtk-about</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                  </object>
-                </child>
-              </object>
-            </child>
+          <object class="GtkPopoverMenuBar" id="menubar">
+            <property name="menu-model">menubar_model</property>
           </object>
         </child>
         <child>
@@ -453,8 +229,8 @@
                         <property name="spacing">3</property>
                         <property name="homogeneous">True</property>
                         <child>
-                          <object class="GtkFileChooserButton" id="filechooserbutton">
-                            <property name="local_only">False</property>
+                          <object class="GtkButton" id="filechooserbutton">
+                            <property name="label" translatable="yes">Choose File…</property>
                           </object>
                         </child>
                         <child>
@@ -465,7 +241,6 @@
                             <property name="spacing">2</property>
                             <child>
                               <object class="GtkEntry" id="entry_check_file">
-                                <property name="truncate_multiline">True</property>
                                 <property name="primary_icon_name">edit-paste</property>
                                 <property name="primary_icon_tooltip_text" translatable="yes">Paste digest from clipboard</property>
                                 <style>
@@ -475,7 +250,6 @@
                             </child>
                             <child>
                               <object class="GtkEntry" id="entry_check_text">
-                                <property name="truncate_multiline">True</property>
                                 <property name="primary_icon_name">edit-paste</property>
                                 <property name="primary_icon_tooltip_text" translatable="yes">Paste digest from clipboard</property>
                                 <style>
@@ -484,27 +258,23 @@
                               </object>
                             </child>
                             <child>
-                              <object class="GtkCheckButton" id="togglebutton_hmac_file">
+                              <object class="GtkToggleButton" id="togglebutton_hmac_file">
                                 <property name="label" translatable="yes">HMAC Key:</property>
-                                <property name="draw_indicator">False</property>
                               </object>
                             </child>
                             <child>
                               <object class="GtkEntry" id="entry_hmac_file">
                                 <property name="visibility">False</property>
-                                <property name="caps_lock_warning">False</property>
                               </object>
                             </child>
                             <child>
-                              <object class="GtkCheckButton" id="togglebutton_hmac_text">
+                              <object class="GtkToggleButton" id="togglebutton_hmac_text">
                                 <property name="label" translatable="yes">HMAC Key:</property>
-                                <property name="draw_indicator">False</property>
                               </object>
                             </child>
                             <child>
                               <object class="GtkEntry" id="entry_hmac_text">
                                 <property name="visibility">False</property>
-                                <property name="caps_lock_warning">False</property>
                               </object>
                             </child>
                           </object>
@@ -569,16 +339,10 @@
                     <property name="min_content_height">150</property>
                     <child>
                       <object class="GtkTreeView" id="treeview">
-                        <property name="rules_hint">True</property>
                         <property name="search_column">2</property>
                         <property name="show_expanders">False</property>
                         <property name="rubber_banding">True</property>
                         <property name="tooltip_column">3</property>
-                        <child internal-child="selection">
-                          <object class="GtkTreeSelection" id="treeselection">
-                            <property name="mode">multiple</property>
-                          </object>
-                        </child>
                         <child>
                           <object class="GtkTreeViewColumn" id="treeviewcolumn_status">
                             <property name="visible">False</property>
@@ -667,15 +431,14 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkButtonBox" id="hbuttonbox">
+                      <object class="GtkBox" id="hbuttonbox">
                         <property name="spacing">6</property>
-                        <property name="layout_style">end</property>
+                        <property name="halign">end</property>
                         <child>
                           <object class="GtkButton" id="button_hash">
                             <property name="label" translatable="yes">Ha_sh</property>
                             <property name="sensitive">False</property>
                             <property name="can_default">True</property>
-                            <property name="receives_default">True</property>
                             <property name="use_underline">True</property>
                             <child>
                               <object class="GtkImage">
@@ -688,7 +451,6 @@
                           <object class="GtkButton" id="button_stop">
                             <property name="label">gtk-stop</property>
                             <property name="can_default">True</property>
-                            <property name="receives_default">True</property>
                             <child>
                               <object class="GtkImage">
                                 <property name="icon_name">process-stop</property>
@@ -707,90 +469,94 @@
       </object>
     </child>
   </object>
+
   <object class="GtkDialog" id="dialog">
-    <property name="margin_start">6</property>
-    <property name="margin_end">6</property>
-    <property name="margin_top">6</property>
-    <property name="margin_bottom">6</property>
     <property name="title" translatable="yes">GtkHash Preferences</property>
-    <property name="destroy_with_parent">True</property>
-    <property name="type_hint">dialog</property>
     <property name="transient_for">window</property>
-    <child internal-child="action_area">
-      <object class="GtkButtonBox">
-        <property name="layout_style">end</property>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="spacing">6</property>
+        <property name="margin_start">6</property>
+        <property name="margin_end">6</property>
+        <property name="margin_top">6</property>
+        <property name="margin_bottom">6</property>
         <child>
-          <object class="GtkButton" id="dialog_button_close">
-            <property name="label">gtk-close</property>
-            <property name="can_default">True</property>
-            <property name="receives_default">True</property>
+          <object class="GtkFrame">
+            <property name="label_xalign">0</property>
             <child>
-              <object class="GtkImage">
-                <property name="icon_name">window-close</property>
+              <object class="GtkGrid" id="dialog_grid">
+                <property name="row_homogeneous">True</property>
+                <property name="column_homogeneous">True</property>
+              </object>
+            </child>
+            <child type="label">
+              <object class="GtkLabel">
+                <property name="label" translatable="yes">Hash Functions</property>
+                <attributes>
+                  <attribute name="weight" value="bold"/>
+                </attributes>
               </object>
             </child>
           </object>
         </child>
-      </object>
-    </child>
-    <child>
-      <object class="GtkFrame">
-        <property name="label_xalign">0</property>
         <child>
-          <object class="GtkGrid" id="dialog_grid">
-            <property name="row_homogeneous">True</property>
-            <property name="column_homogeneous">True</property>
-          </object>
-        </child>
-        <child type="label">
-          <object class="GtkLabel">
-            <property name="label" translatable="yes">Hash Functions</property>
-            <attributes>
-              <attribute name="weight" value="bold"/>
-            </attributes>
-          </object>
-        </child>
-      </object>
-    </child>
-    <child>
-      <object class="GtkFrame">
-        <property name="label_xalign">0</property>
-        <child>
-          <object class="GtkCheckButton" id="dialog_togglebutton_show_hmac">
-            <property name="label">HMAC</property>
-            <property name="draw_indicator">True</property>
-          </object>
-        </child>
-        <child type="label">
-          <object class="GtkLabel">
-            <property name="label" translatable="yes">MAC Functions</property>
-            <attributes>
-              <attribute name="weight" value="bold"/>
-            </attributes>
-          </object>
-        </child>
-      </object>
-    </child>
-    <child>
-      <object class="GtkBox">
-        <property name="spacing">6</property>
-        <child>
-          <object class="GtkLabel">
-            <property name="label" translatable="yes">Digest Format:</property>
-            <attributes>
-              <attribute name="weight" value="bold"/>
-            </attributes>
-          </object>
-        </child>
-        <child>
-          <object class="GtkComboBox" id="dialog_combobox">
-            <property name="model">dialog_liststore</property>
-            <property name="active">0</property>
+          <object class="GtkFrame">
+            <property name="label_xalign">0</property>
             <child>
-              <object class="GtkCellRendererText"/>
-              <attributes>
-                <attribute name="text">0</attribute>
-              </attributes>
+              <object class="GtkCheckButton" id="dialog_togglebutton_show_hmac">
+                <property name="label">HMAC</property>
+              </object>
+            </child>
+            <child type="label">
+              <object class="GtkLabel">
+                <property name="label" translatable="yes">MAC Functions</property>
+                <attributes>
+                  <attribute name="weight" value="bold"/>
+                </attributes>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="spacing">6</property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label" translatable="yes">Digest Format:</property>
+                <attributes>
+                  <attribute name="weight" value="bold"/>
+                </attributes>
+              </object>
+            </child>
+            <child>
+              <object class="GtkComboBox" id="dialog_combobox">
+                <property name="model">dialog_liststore</property>
+                <property name="active">0</property>
+                <child>
+                  <object class="GtkCellRendererText"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="halign">end</property>
+            <property name="margin_top">6</property>
+            <child>
+              <object class="GtkButton" id="dialog_button_close">
+                <property name="label">gtk-close</property>
+                <property name="can_default">True</property>
+                <child>
+                  <object class="GtkImage">
+                    <property name="icon_name">window-close</property>
+                  </object>
+                </child>
+              </object>
             </child>
           </object>
         </child>
