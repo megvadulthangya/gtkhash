@@ -83,18 +83,22 @@ static void default_hash_funcs(void)
 	exit(EXIT_FAILURE);
 }
 
+#if GTK_CHECK_VERSION(4, 0, 0)
 static void default_show_widgets(void)
 {
-#if GTK_CHECK_VERSION(4, 0, 0)
-	/* GtkCheckMenuItem removed in GTK4, do nothing */
+	/* GTK4: GtkCheckMenuItem removed, do nothing */
+	return;
+}
 #else
+static void default_show_widgets(void)
+{
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(
 		gui.dialog_togglebutton_show_hmac), false);
 
 	gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(
 		gui.menuitem_treeview_show_toolbar), true);
-#endif
 }
+#endif
 
 static void prefs_default(void)
 {
@@ -170,11 +174,15 @@ static void load_show_widgets(void)
 		gui.menuitem_treeview_show_toolbar, "active", PREFS_BIND_FLAGS);
 }
 
+#if GTK_CHECK_VERSION(4, 0, 0)
 static void load_window_size(void)
 {
-#if GTK_CHECK_VERSION(4, 0, 0)
-	/* gtk_window_resize removed in GTK4, stub */
+	/* GTK4: gtk_window_resize removed, stub */
+	return;
+}
 #else
+static void load_window_size(void)
+{
 	if (g_settings_get_boolean(prefs_priv.settings, PREFS_KEY_WINDOW_MAX)) {
 		gtk_window_maximize(gui.window);
 		return;
@@ -185,8 +193,8 @@ static void load_window_size(void)
 
 	if ((width > 0) && (height > 0))
 		gtk_window_resize(gui.window, width, height);
-#endif
 }
+#endif
 
 static void prefs_load(void)
 {
@@ -262,11 +270,15 @@ static void save_view(void)
 	g_settings_set_string(prefs_priv.settings, PREFS_KEY_VIEW, str);
 }
 
+#if GTK_CHECK_VERSION(4, 0, 0)
 static void save_window_size(void)
 {
-#if GTK_CHECK_VERSION(4, 0, 0)
-	/* gtk_window_get_size removed in GTK4, stub */
+	/* GTK4: gtk_window_get_size removed, stub */
+	return;
+}
 #else
+static void save_window_size(void)
+{
 	bool max = gui_is_maximised();
 	g_settings_set_boolean(prefs_priv.settings, PREFS_KEY_WINDOW_MAX, max);
 	if (max)
@@ -277,8 +289,8 @@ static void save_window_size(void)
 
 	g_settings_set_int(prefs_priv.settings, PREFS_KEY_WINDOW_HEIGHT, height);
 	g_settings_set_int(prefs_priv.settings, PREFS_KEY_WINDOW_WIDTH, width);
-#endif
 }
+#endif
 
 static void prefs_save(void)
 {
