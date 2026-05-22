@@ -1,20 +1,20 @@
 /*
- *   Copyright (C) 2007-2020 Tristan Heaven <tristan@tristanheaven.net>
+ * Copyright (C) 2007-2020 Tristan Heaven <tristan@tristanheaven.net>
  *
- *   This file is part of GtkHash.
+ * This file is part of GtkHash.
  *
- *   GtkHash is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ * GtkHash is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
  *
- *   GtkHash is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *   GNU General Public License for more details.
+ * GtkHash is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with GtkHash. If not, see <https://gnu.org/licenses/gpl-2.0.txt>.
+ * You should have received a copy of the GNU General Public License
+ * along with GtkHash. If not, see <https://gnu.org/licenses/gpl-2.0.txt>.
  */
 
 #ifndef GTKHASH_GUI_H
@@ -45,6 +45,16 @@ enum gui_state_e {
 
 extern struct gui_s {
 	GtkWindow *window;
+#if GTK_CHECK_VERSION(4, 0, 0)
+	GtkWidget *menuitem_open, *menuitem_save_as, *menuitem_quit;
+	GtkWidget *menuitem_edit;
+	GtkWidget *menuitem_cut, *menuitem_copy, *menuitem_paste;
+	GtkWidget *menuitem_delete, *menuitem_select_all, *menuitem_prefs;
+	GtkWidget *menuitem_about;
+	GtkWidget *radiomenuitem_file, *radiomenuitem_text, *radiomenuitem_file_list;
+	GtkWidget *toolbar;
+	GtkWidget *toolbutton_add, *toolbutton_remove, *toolbutton_clear;
+#else
 	GtkMenuItem *menuitem_open, *menuitem_save_as, *menuitem_quit;
 	GtkMenuItem *menuitem_edit;
 	GtkMenuItem *menuitem_cut, *menuitem_copy, *menuitem_paste;
@@ -53,24 +63,38 @@ extern struct gui_s {
 	GtkRadioMenuItem *radiomenuitem_file, *radiomenuitem_text, *radiomenuitem_file_list;
 	GtkToolbar *toolbar;
 	GtkToolButton *toolbutton_add, *toolbutton_remove, *toolbutton_clear;
+#endif
 	GtkBox *vbox_single, *vbox_list;
 	GtkBox *hbox_input, *hbox_output;
 	GtkBox *vbox_outputlabels, *vbox_digests_file, *vbox_digests_text;
 	GtkEntry *entry_text, *entry_check_file, *entry_check_text;
 	GtkEntry *entry_hmac_file, *entry_hmac_text;
+#if GTK_CHECK_VERSION(4, 0, 0)
+	GtkFileChooser *filechooserbutton;
+#else
 	GtkFileChooserButton *filechooserbutton;
+#endif
 	GtkToggleButton *togglebutton_hmac_file, *togglebutton_hmac_text;
 	GtkLabel *label_file, *label_text;
 	GtkTreeView *treeview;
 	GtkTreeSelection *treeselection;
 	GtkTreeModel *treemodel;
 	GtkListStore *liststore;
+#if GTK_CHECK_VERSION(4, 0, 0)
+	GtkWidget *menu_treeview;
+	GtkWidget *menuitem_treeview_add, *menuitem_treeview_remove;
+	GtkWidget *menuitem_treeview_clear;
+	GtkWidget *menu_treeview_copy;
+	GtkWidget *menuitem_treeview_copy;
+	GtkWidget *menuitem_treeview_show_toolbar;
+#else
 	GtkMenu *menu_treeview;
 	GtkMenuItem *menuitem_treeview_add, *menuitem_treeview_remove;
 	GtkMenuItem *menuitem_treeview_clear;
 	GtkMenu *menu_treeview_copy;
 	GtkMenuItem *menuitem_treeview_copy;
 	GtkMenuItem *menuitem_treeview_show_toolbar;
+#endif
 	GtkSeparator *hseparator_buttons;
 	GtkProgressBar *progressbar;
 	GtkButton *button_hash, *button_stop;
@@ -82,10 +106,18 @@ extern struct gui_s {
 	enum gui_view_e view;
 	struct {
 		GtkToggleButton *button;
+#if GTK_CHECK_VERSION(4, 0, 0)
+		GtkButton *label_file;
+#else
 		GtkModelButton *label_file;
+#endif
 		GtkLabel *label_text;
 		GtkEntry *entry_file, *entry_text;
+#if GTK_CHECK_VERSION(4, 0, 0)
+		GtkWidget *menuitem_treeview_copy;
+#else
 		GtkMenuItem *menuitem_treeview_copy;
+#endif
 	} hash_widgets[HASH_FUNCS_N];
 } gui;
 

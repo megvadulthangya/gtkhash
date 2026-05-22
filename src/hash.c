@@ -1,20 +1,20 @@
 /*
- *   Copyright (C) 2007-2020 Tristan Heaven <tristan@tristanheaven.net>
+ * Copyright (C) 2007-2020 Tristan Heaven <tristan@tristanheaven.net>
  *
- *   This file is part of GtkHash.
+ * This file is part of GtkHash.
  *
- *   GtkHash is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 2 of the License, or
- *   (at your option) any later version.
+ * GtkHash is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
  *
- *   GtkHash is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *   GNU General Public License for more details.
+ * GtkHash is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with GtkHash. If not, see <https://gnu.org/licenses/gpl-2.0.txt>.
+ * You should have received a copy of the GNU General Public License
+ * along with GtkHash. If not, see <https://gnu.org/licenses/gpl-2.0.txt>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -53,7 +53,11 @@ void gtkhash_hash_string_finish_cb(void)
 void gtkhash_hash_string_digest_cb(const enum hash_func_e id,
 	const char *digest)
 {
+#if GTK_CHECK_VERSION(4, 0, 0)
+	gtk_editable_set_text(GTK_EDITABLE(gui.hash_widgets[id].entry_text), digest);
+#else
 	gtk_entry_set_text(gui.hash_widgets[id].entry_text, digest);
+#endif
 }
 
 void gtkhash_hash_file_report_cb(G_GNUC_UNUSED void *data,
@@ -77,7 +81,11 @@ void gtkhash_hash_file_digest_cb(const enum hash_func_e id,
 {
 	switch (gui.view) {
 		case GUI_VIEW_FILE:
+#if GTK_CHECK_VERSION(4, 0, 0)
+			gtk_editable_set_text(GTK_EDITABLE(gui.hash_widgets[id].entry_file), digest);
+#else
 			gtk_entry_set_text(gui.hash_widgets[id].entry_file, digest);
+#endif
 			break;
 		case GUI_VIEW_FILE_LIST:
 			list_set_digest(hash_priv.list_row, id, digest);
@@ -157,7 +165,11 @@ void hash_string(void)
 	if (!hash_funcs_count_enabled())
 		return;
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+	const char *str = gtk_editable_get_text(GTK_EDITABLE(gui.entry_text));
+#else
 	const char *str = gtk_entry_get_text(gui.entry_text);
+#endif
 	const enum digest_format_e format = gui_get_digest_format();
 
 	size_t key_size = 0;
