@@ -200,6 +200,8 @@ static void gtkhash_properties_on_treeview_gesture_pressed(
 
 #endif
 
+#if !GTK_CHECK_VERSION(4, 0, 0)
+
 static void gtkhash_properties_on_treeview_row_activated(
     struct page_s *page,
     GtkTreePath *path,
@@ -215,6 +217,8 @@ static void gtkhash_properties_on_treeview_row_activated(
     if (gtkhash_properties_list_hash_selected(page))
         gtkhash_properties_busy(page);
 }
+
+#endif
 
 static void gtkhash_properties_on_menu_map_event(struct page_s *page)
 {
@@ -523,11 +527,13 @@ static void gtkhash_properties_connect_signals(struct page_s *page)
 
 #endif
 
+#if !GTK_CHECK_VERSION(4, 0, 0)
     g_signal_connect_swapped(page->treeview,
         "row-activated",
         G_CALLBACK(
             gtkhash_properties_on_treeview_row_activated),
         page);
+#endif
 
     g_signal_connect_swapped(page->menuitem_copy,
         "clicked",
@@ -658,7 +664,7 @@ static GList *gtkhash_properties_get_models(
         return NULL;
 
     NautilusPropertiesModel *model =
-        nautilus_properties_model_new(
+        nautilus_properties_model_new_for_widget(
             _("Checksums"),
             page->box);
 
