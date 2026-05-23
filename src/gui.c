@@ -55,6 +55,58 @@ static struct {
     .state = GUI_STATE_INVALID,
 };
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+static GFile *gui_selected_file = NULL;
+static char *gui_selected_uri = NULL;
+
+static void gui_filechooserbutton_set_uri(const char *uri)
+{
+    g_free(gui_selected_uri);
+    gui_selected_uri = g_strdup(uri);
+    if (gui_selected_file) g_object_unref(gui_selected_file);
+    gui_selected_file = g_file_new_for_uri(uri);
+    char *basename = g_file_get_basename(gui_selected_file);
+    gtk_button_set_label(GTK_BUTTON(gui.filechooserbutton),
+                         basename ? basename : uri);
+    g_free(basename);
+}
+
+static char * gui_filechooserbutton_get_uri(void)
+{
+    return g_strdup(gui_selected_uri);
+}
+
+static void gui_filechooserbutton_dialog_response(GtkFileDialog *dialog,
+                                                  GAsyncResult *result,
+                                                  gpointer user_data)
+{
+    GError *error = NULL;
+    GFile *file = gtk_file_dialog_open_finish(dialog, result, &error);
+    if (file) {
+        char *uri = g_file_get_uri(file);
+        gui_filechooserbutton_set_uri(uri);
+        g_free(uri);
+        g_object_unref(file);
+        gui_update();
+    } else if (error) {
+        g_warning("File dialog error: %s", error->message);
+        g_error_free(error);
+    }
+    g_object_unref(dialog);
+}
+
+static void gui_filechooserbutton_clicked(GtkButton *button,
+                                          gpointer user_data)
+{
+    GtkWindow *window = GTK_WINDOW(gui.window);
+    GtkFileDialog *dialog = gtk_file_dialog_new();
+    gtk_file_dialog_set_title(dialog, _("Open File"));
+    gtk_file_dialog_open(dialog, window, NULL,
+                         (GAsyncReadyCallback) gui_filechooserbutton_dialog_response,
+                         NULL);
+}
+#endif
+
 static GObject *gui_get_object(GtkBuilder *builder, const char *name)
 {
     g_assert(name);
@@ -132,8 +184,11 @@ static void gui_init_objects(GtkBuilder *builder)
 
     // Inputs
 #if GTK_CHECK_VERSION(4, 0, 0)
-    gui.filechooserbutton = GTK_FILE_CHOOSER(gui_get_object(builder,
+    gui.filechooserbutton = GTK_WIDGET(gui_get_object(builder,
         "filechooserbutton"));
+    gtk_button_set_label(GTK_BUTTON(gui.filechooserbutton), _("Choose a file..."));
+    g_signal_connect(gui.filechooserbutton, "clicked",
+                     G_CALLBACK(gui_filechooserbutton_clicked), NULL);
 #else
     gui.filechooserbutton = GTK_FILE_CHOOSER_BUTTON(gui_get_object(builder,
         "filechooserbutton"));
@@ -162,8 +217,12 @@ static void gui_init_objects(GtkBuilder *builder)
     // Tree View
     gui.treeview = GTK_TREE_VIEW(gui_get_object(builder,
         "treeview"));
+#if GTK_CHECK_VERSION(4, 0, 0)
+    gui.treeselection = gtk_tree_view_get_selection(gui.treeview);
+#else
     gui.treeselection = GTK_TREE_SELECTION(gui_get_object(builder,
         "treeselection"));
+#endif
 #if !GTK_CHECK_VERSION(4, 0, 0)
     gui.menu_treeview = GTK_MENU(gui_get_object(builder,
         "menu_treeview"));
@@ -396,11 +455,7 @@ unsigned int gui_add_ud_list(GSList *ud_list, const enum gui_view_e view)
     if (readable_len && (gui.view == GUI_VIEW_FILE)) {
         struct uri_digest_s *ud = readable->data;
 #if GTK_CHECK_VERSION(4, 0, 0)
-        GFile *file = g_file_new_for_uri(ud->uri);
-        if (file) {
-            gtk_file_chooser_set_file(GTK_FILE_CHOOSER(gui.filechooserbutton), file, NULL);
-            g_object_unref(file);
-        }
+        gui_filechooserbutton_set_uri(ud->uri);
 #else
         gtk_file_chooser_set_uri(GTK_FILE_CHOOSER(gui.filechooserbutton),
             ud->uri);
@@ -510,6 +565,8 @@ void gui_deinit(void)
 {
 #if GTK_CHECK_VERSION(4, 0, 0)
     gtk_window_destroy(GTK_WINDOW(gui.window));
+    g_clear_object(&gui_selected_file);
+    g_clear_pointer(&gui_selected_uri, g_free);
 #else
     gtk_widget_destroy(GTK_WIDGET(gui.window));
     g_object_unref(gui.menu_treeview);
@@ -830,9 +887,7 @@ void gui_update(void)
 #endif
 
 #if GTK_CHECK_VERSION(4, 0, 0)
-            GFile *file = gtk_file_chooser_get_file(GTK_FILE_CHOOSER(gui.filechooserbutton));
-            char *uri = file ? g_file_get_uri(file) : NULL;
-            if (file) g_object_unref(file);
+            char *uri = gui_filechooserbutton_get_uri();
 #else
             char *uri = gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(
                 gui.filechooserbutton));
@@ -1082,9 +1137,7 @@ void gui_start_hash(void)
             gui_clear_digests();
             gui_set_state(GUI_STATE_BUSY);
 #if GTK_CHECK_VERSION(4, 0, 0)
-            GFile *file = gtk_file_chooser_get_file(GTK_FILE_CHOOSER(gui.filechooserbutton));
-            char *uri = file ? g_file_get_uri(file) : NULL;
-            if (file) g_object_unref(file);
+            char *uri = gui_filechooserbutton_get_uri();
 #else
             char *uri = gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(
                 gui.filechooserbutton));
