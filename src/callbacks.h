@@ -20,6 +20,12 @@
 #ifndef GTKHASH_CALLBACKS_H
 #define GTKHASH_CALLBACKS_H
 
+#include <gtk/gtk.h>
+
 void callbacks_init(void);
+
+#if GTK_CHECK_VERSION(4,0,0)
+extern GFile *gui_filechooser_selected_file;
+#endif
 
 #endif
