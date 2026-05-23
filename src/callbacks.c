@@ -898,14 +898,6 @@ static void on_treeview_click_gesture_pressed(GtkGestureClick *gesture,
     }
 }
 
-static void on_filechooserbutton_clicked(GtkButton *button, gpointer user_data)
-{
-    GtkFileDialog *dialog = gtk_file_dialog_new();
-    gtk_file_dialog_set_title(dialog, _("Select File"));
-    gtk_file_dialog_open(dialog, GTK_WINDOW(gui.window), NULL,
-        on_filechooserbutton_dialog_response, NULL);
-}
-
 static void on_filechooserbutton_dialog_response(GObject *source, GAsyncResult *res, gpointer user_data)
 {
     GtkFileDialog *dialog = GTK_FILE_DIALOG(source);
@@ -923,6 +915,14 @@ static void on_filechooserbutton_dialog_response(GObject *source, GAsyncResult *
     filechooserbutton_update_gtk4(file);
     g_object_unref(file);
     g_object_unref(dialog);
+}
+
+static void on_filechooserbutton_clicked(GtkButton *button, gpointer user_data)
+{
+    GtkFileDialog *dialog = gtk_file_dialog_new();
+    gtk_file_dialog_set_title(dialog, _("Select File"));
+    gtk_file_dialog_open(dialog, GTK_WINDOW(gui.window), NULL,
+        on_filechooserbutton_dialog_response, NULL);
 }
 #endif
 
