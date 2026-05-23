@@ -38,6 +38,7 @@
 
 #if GTK_CHECK_VERSION(4,0,0)
 GFile *gui_filechooser_selected_file = NULL;
+static gboolean filechooser_dialog_in_progress = FALSE;
 
 static void filechooserbutton_update_gtk4(GFile *file)
 {
@@ -909,16 +910,21 @@ static void on_filechooserbutton_dialog_response(GObject *source, GAsyncResult *
         g_error_free(error);
         g_object_unref(dialog);
         filechooserbutton_update_gtk4(NULL);
+        filechooser_dialog_in_progress = FALSE;
         return;
     }
 
     filechooserbutton_update_gtk4(file);
     g_object_unref(file);
     g_object_unref(dialog);
+    filechooser_dialog_in_progress = FALSE;
 }
 
 static void on_filechooserbutton_clicked(GtkButton *button, gpointer user_data)
 {
+    if (filechooser_dialog_in_progress)
+        return;
+    filechooser_dialog_in_progress = TRUE;
     GtkFileDialog *dialog = gtk_file_dialog_new();
     gtk_file_dialog_set_title(dialog, _("Select File"));
     gtk_file_dialog_open(dialog, GTK_WINDOW(gui.window), NULL,
