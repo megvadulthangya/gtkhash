@@ -23,7 +23,7 @@
 #include "hash/hash-func.h"
 
 extern struct list_s {
-	unsigned int rows;
+    unsigned int rows;
 } list;
 
 void list_init(void);
@@ -38,5 +38,10 @@ char *list_get_selected_digest(enum hash_func_e id);
 void list_check_digests(unsigned int row);
 void list_clear_digests(void);
 void list_clear(void);
+
+#if GTK_CHECK_VERSION(4,0,0)
+typedef void (*ListDropUriFunc)(const gchar * const *uris, gsize n_uris);
+void list_set_drop_handler(ListDropUriFunc func);
+#endif
 
 #endif

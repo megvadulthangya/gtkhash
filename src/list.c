@@ -18,7 +18,7 @@
  */
 
 #ifdef HAVE_CONFIG_H
-	#include "config.h"
+    #include "config.h"
 #endif
 
 #include <stdlib.h>
@@ -34,334 +34,365 @@
 #include "hash/digest-format.h"
 
 enum {
-	COL_STATUS,    // 0
-	COL_ICON_NAME, // 1
-	COL_PNAME,     // 2
-	COL_TOOLTIP,   // 3
-	COL_CHECK,     // 4
-	COL_DIGESTS,   // 5+
+    COL_STATUS,    // 0
+    COL_ICON_NAME, // 1
+    COL_PNAME,     // 2
+    COL_TOOLTIP,   // 3
+    COL_CHECK,     // 4
+    COL_DIGESTS,   // 5+
 };
 
 struct list_s list;
 
 struct {
-	int hash_cols[HASH_FUNCS_N];
-	bool show_status;
+    int hash_cols[HASH_FUNCS_N];
+    bool show_status;
 } list_priv = {
-	.show_status = false,
+    .show_status = false,
 };
+
+#if GTK_CHECK_VERSION(4,0,0)
+static ListDropUriFunc list_drop_handler = NULL;
+
+static gboolean on_drop(GtkDropTarget *self, const GValue *value,
+    double x, double y, gpointer user_data)
+{
+    if (!list_drop_handler)
+        return FALSE;
+
+    const gchar *uri_list = g_value_get_string(value);
+    if (!uri_list)
+        return FALSE;
+
+    gchar **uris = g_uri_list_extract_uris(uri_list);
+    if (uris) {
+        gsize n = g_strv_length(uris);
+        list_drop_handler((const gchar * const *)uris, n);
+        g_strfreev(uris);
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+void list_set_drop_handler(ListDropUriFunc func)
+{
+    list_drop_handler = func;
+}
+#endif
 
 void list_init(void)
 {
-	list.rows = 0;
+    list.rows = 0;
 
-	int cols = COL_DIGESTS;
+    int cols = COL_DIGESTS;
 
-	for (int i = 0; i < HASH_FUNCS_N; i++) {
-		if (!hash.funcs[i].supported)
-			continue;
+    for (int i = 0; i < HASH_FUNCS_N; i++) {
+        if (!hash.funcs[i].supported)
+            continue;
 
-		list_priv.hash_cols[i] = cols;
-		cols = gtk_tree_view_insert_column_with_attributes(gui.treeview, -1,
-			hash.funcs[i].name, gtk_cell_renderer_text_new(),
-			"text", cols, NULL);
-	}
+        list_priv.hash_cols[i] = cols;
+        cols = gtk_tree_view_insert_column_with_attributes(gui.treeview, -1,
+            hash.funcs[i].name, gtk_cell_renderer_text_new(),
+            "text", cols, NULL);
+    }
 
-	GType types[cols];
-	types[COL_STATUS]    = G_TYPE_CHAR;
-	types[COL_ICON_NAME] = G_TYPE_STRING;
-	types[COL_PNAME]     = G_TYPE_STRING;
-	types[COL_TOOLTIP]   = G_TYPE_STRING;
-	types[COL_CHECK]     = G_TYPE_STRING;
+    GType types[cols];
+    types[COL_STATUS]    = G_TYPE_CHAR;
+    types[COL_ICON_NAME] = G_TYPE_STRING;
+    types[COL_PNAME]     = G_TYPE_STRING;
+    types[COL_TOOLTIP]   = G_TYPE_STRING;
+    types[COL_CHECK]     = G_TYPE_STRING;
 
-	for (int i = COL_DIGESTS; i < cols; i++) {
-		types[i] = G_TYPE_STRING;
-		GtkTreeViewColumn *col = gtk_tree_view_get_column(gui.treeview, i);
-		gtk_tree_view_column_set_resizable(col, true);
-		gtk_tree_view_column_set_min_width(col, 10);
-	}
+    for (int i = COL_DIGESTS; i < cols; i++) {
+        types[i] = G_TYPE_STRING;
+        GtkTreeViewColumn *col = gtk_tree_view_get_column(gui.treeview, i);
+        gtk_tree_view_column_set_resizable(col, true);
+        gtk_tree_view_column_set_min_width(col, 10);
+    }
 
-	gui.liststore = gtk_list_store_newv(cols, types);
-	gui.treemodel = GTK_TREE_MODEL(gui.liststore);
+    gui.liststore = gtk_list_store_newv(cols, types);
+    gui.treemodel = GTK_TREE_MODEL(gui.liststore);
 
-	gtk_tree_view_set_model(gui.treeview, gui.treemodel);
+    gtk_tree_view_set_model(gui.treeview, gui.treemodel);
 
 #if !GTK_CHECK_VERSION(4, 0, 0)
-	const GtkTargetEntry targets[] = {
-		{ (char *)"text/uri-list", 0, 0 }
-	};
-	gtk_drag_dest_set(GTK_WIDGET(gui.treeview), GTK_DEST_DEFAULT_ALL, targets,
-		G_N_ELEMENTS(targets), GDK_ACTION_COPY);
+    const GtkTargetEntry targets[] = {
+        { (char *)"text/uri-list", 0, 0 }
+    };
+    gtk_drag_dest_set(GTK_WIDGET(gui.treeview), GTK_DEST_DEFAULT_ALL, targets,
+        G_N_ELEMENTS(targets), GDK_ACTION_COPY);
 #else
-	/* GTK4 DND implementation placeholder:
-	 * Use GtkDropTarget with a suitable GType/content format for file URIs.
-	 * Example (to be completed):
-	 * GtkDropTarget *drop_target = gtk_drop_target_new(G_TYPE_FILE, GDK_ACTION_COPY);
-	 * gtk_widget_add_controller(GTK_WIDGET(gui.treeview), GTK_EVENT_CONTROLLER(drop_target));
-	 * g_signal_connect(drop_target, "drop", G_CALLBACK(on_drop), NULL);
-	 */
+    GtkDropTarget *drop_target = gtk_drop_target_new(G_TYPE_STRING, GDK_ACTION_COPY);
+    g_signal_connect(drop_target, "drop", G_CALLBACK(on_drop), NULL);
+    gtk_widget_add_controller(GTK_WIDGET(gui.treeview),
+        GTK_EVENT_CONTROLLER(drop_target));
 #endif
 }
 
 void list_update(void)
 {
-	bool enabled = false;
+    bool enabled = false;
 
-	for (int i = 0; i < HASH_FUNCS_N; i++) {
-		if (!hash.funcs[i].supported)
-			continue;
-		if (hash.funcs[i].enabled)
-			enabled = true;
+    for (int i = 0; i < HASH_FUNCS_N; i++) {
+        if (!hash.funcs[i].supported)
+            continue;
+        if (hash.funcs[i].enabled)
+            enabled = true;
 
-		GtkTreeViewColumn *col = gtk_tree_view_get_column(gui.treeview,
-			list_priv.hash_cols[i]);
-		gtk_tree_view_column_set_visible(col, hash.funcs[i].enabled);
-	}
+        GtkTreeViewColumn *col = gtk_tree_view_get_column(gui.treeview,
+            list_priv.hash_cols[i]);
+        gtk_tree_view_column_set_visible(col, hash.funcs[i].enabled);
+    }
 
-	GtkTreeViewColumn *col = gtk_tree_view_get_column(gui.treeview, COL_STATUS);
-	gtk_tree_view_column_set_visible(col, list_priv.show_status);
+    GtkTreeViewColumn *col = gtk_tree_view_get_column(gui.treeview, COL_STATUS);
+    gtk_tree_view_column_set_visible(col, list_priv.show_status);
 
-	gtk_widget_set_sensitive(GTK_WIDGET(gui.toolbutton_clear), list.rows);
-	gtk_widget_set_sensitive(GTK_WIDGET(gui.menuitem_treeview_clear), list.rows);
-	gtk_widget_set_sensitive(GTK_WIDGET(gui.button_hash), list.rows && enabled);
+    gtk_widget_set_sensitive(GTK_WIDGET(gui.toolbutton_clear), list.rows);
+    gtk_widget_set_sensitive(GTK_WIDGET(gui.menuitem_treeview_clear), list.rows);
+    gtk_widget_set_sensitive(GTK_WIDGET(gui.button_hash), list.rows && enabled);
 }
 
 void list_append_row(const char * const uri, const char * const check)
 {
-	g_assert(uri);
+    g_assert(uri);
 
-	GFile *file = g_file_new_for_uri(uri);
-	char *pname = g_file_get_parse_name(file);
-	char *basename = g_filename_display_basename(pname);
-	char *tooltip = g_markup_escape_text(basename, -1);
+    GFile *file = g_file_new_for_uri(uri);
+    char *pname = g_file_get_parse_name(file);
+    char *basename = g_filename_display_basename(pname);
+    char *tooltip = g_markup_escape_text(basename, -1);
 
-	gtk_list_store_insert_with_values(gui.liststore, NULL, list.rows + 1,
-		COL_PNAME, pname,
-		COL_TOOLTIP, tooltip,
-		COL_CHECK, check ? check : "",
-		-1);
-	list.rows++;
+    gtk_list_store_insert_with_values(gui.liststore, NULL, list.rows + 1,
+        COL_PNAME, pname,
+        COL_TOOLTIP, tooltip,
+        COL_CHECK, check ? check : "",
+        -1);
+    list.rows++;
 
-	g_free(tooltip);
-	g_free(basename);
-	g_free(pname);
-	g_object_unref(file);
+    g_free(tooltip);
+    g_free(basename);
+    g_free(pname);
+    g_object_unref(file);
 
-	if (check)
-		list_priv.show_status = true;
+    if (check)
+        list_priv.show_status = true;
+
+#if GTK_CHECK_VERSION(4,0,0)
+    list_update();
+#endif
 }
 
 void list_remove_selection(void)
 {
-	if (gtk_tree_selection_count_selected_rows(gui.treeselection) ==
-		(int)list.rows)
-	{
-		list_clear();
-		return;
-	}
+    if (gtk_tree_selection_count_selected_rows(gui.treeselection) ==
+        (int)list.rows)
+    {
+        list_clear();
+        return;
+    }
 
-	GList *rows = gtk_tree_selection_get_selected_rows(gui.treeselection,
-		&gui.treemodel);
+    GList *rows = gtk_tree_selection_get_selected_rows(gui.treeselection,
+        &gui.treemodel);
 
-	for (GList *i = rows; i != NULL; i = i->next) {
-		GtkTreePath *path = i->data;
-		GtkTreeRowReference *ref = gtk_tree_row_reference_new(gui.treemodel,
-			i->data);
-		i->data = ref;
-		gtk_tree_path_free(path);
-	}
+    for (GList *i = rows; i != NULL; i = i->next) {
+        GtkTreePath *path = i->data;
+        GtkTreeRowReference *ref = gtk_tree_row_reference_new(gui.treemodel,
+            i->data);
+        i->data = ref;
+        gtk_tree_path_free(path);
+    }
 
-	for (GList *i = rows; i != NULL; i = i->next) {
-		GtkTreeRowReference *ref = i->data;
-		GtkTreePath *path = gtk_tree_row_reference_get_path(ref);
-		GtkTreeIter iter;
+    for (GList *i = rows; i != NULL; i = i->next) {
+        GtkTreeRowReference *ref = i->data;
+        GtkTreePath *path = gtk_tree_row_reference_get_path(ref);
+        GtkTreeIter iter;
 
-		if (gtk_tree_model_get_iter(gui.treemodel, &iter, path)) {
-			gtk_list_store_remove(gui.liststore, &iter);
-			list.rows--;
-		}
+        if (gtk_tree_model_get_iter(gui.treemodel, &iter, path)) {
+            gtk_list_store_remove(gui.liststore, &iter);
+            list.rows--;
+        }
 
-		gtk_tree_path_free(path);
-		gtk_tree_row_reference_free(ref);
-	}
+        gtk_tree_path_free(path);
+        gtk_tree_row_reference_free(ref);
+    }
 
-	g_list_free(rows);
+    g_list_free(rows);
 
-	gtk_tree_selection_unselect_all(gui.treeselection);
+    gtk_tree_selection_unselect_all(gui.treeselection);
 }
 
 static GFile *list_get_file(const unsigned int row)
 {
-	g_assert(row <= list.rows);
+    g_assert(row <= list.rows);
 
-	GtkTreeIter iter;
+    GtkTreeIter iter;
 
-	if (!gtk_tree_model_iter_nth_child(gui.treemodel, &iter, NULL, row))
-		g_assert_not_reached();
+    if (!gtk_tree_model_iter_nth_child(gui.treemodel, &iter, NULL, row))
+        g_assert_not_reached();
 
-	GValue value = G_VALUE_INIT;
-	gtk_tree_model_get_value(gui.treemodel, &iter, COL_PNAME, &value);
-	GFile *file = g_file_parse_name(g_value_get_string(&value));
-	g_value_unset(&value);
+    GValue value = G_VALUE_INIT;
+    gtk_tree_model_get_value(gui.treemodel, &iter, COL_PNAME, &value);
+    GFile *file = g_file_parse_name(g_value_get_string(&value));
+    g_value_unset(&value);
 
-	return file;
+    return file;
 }
 
 char *list_get_uri(const unsigned int row)
 {
-	GFile *file = list_get_file(row);
-	char *uri = g_file_get_uri(file);
-	g_object_unref(file);
+    GFile *file = list_get_file(row);
+    char *uri = g_file_get_uri(file);
+    g_object_unref(file);
 
-	return uri;
+    return uri;
 }
 
 char *list_get_basename(const unsigned int row)
 {
-	GFile *file = list_get_file(row);
-	char *basename = g_file_get_basename(file);
-	g_object_unref(file);
+    GFile *file = list_get_file(row);
+    char *basename = g_file_get_basename(file);
+    g_object_unref(file);
 
-	return basename;
+    return basename;
 }
 
 static void list_scroll_to_next_row(GtkTreeIter iter)
 {
-	if (!gtk_tree_model_iter_next(gui.treemodel, &iter))
-		return;
+    if (!gtk_tree_model_iter_next(gui.treemodel, &iter))
+        return;
 
-	GtkTreePath *path = gtk_tree_model_get_path(gui.treemodel, &iter);
-	gtk_tree_view_scroll_to_cell(gui.treeview, path, NULL, false, 0, 0);
-	gtk_tree_path_free(path);
+    GtkTreePath *path = gtk_tree_model_get_path(gui.treemodel, &iter);
+    gtk_tree_view_scroll_to_cell(gui.treeview, path, NULL, false, 0, 0);
+    gtk_tree_path_free(path);
 }
 
 void list_set_digest(const unsigned int row, const enum hash_func_e id,
-	const char * const digest)
+    const char * const digest)
 {
-	g_assert(row <= list.rows);
-	g_assert(HASH_FUNC_IS_VALID(id));
+    g_assert(row <= list.rows);
+    g_assert(HASH_FUNC_IS_VALID(id));
 
-	GtkTreeIter iter;
-	if (!gtk_tree_model_iter_nth_child(gui.treemodel, &iter, NULL, row))
-		g_assert_not_reached();
+    GtkTreeIter iter;
+    if (!gtk_tree_model_iter_nth_child(gui.treemodel, &iter, NULL, row))
+        g_assert_not_reached();
 
-	list_scroll_to_next_row(iter);
+    list_scroll_to_next_row(iter);
 
-	gtk_list_store_set(gui.liststore, &iter,
-		list_priv.hash_cols[id], digest,
-		-1);
+    gtk_list_store_set(gui.liststore, &iter,
+        list_priv.hash_cols[id], digest,
+        -1);
 }
 
 char *list_get_digest(const unsigned int row, const enum hash_func_e id)
 {
-	g_assert(row <= list.rows);
-	g_assert(HASH_FUNC_IS_VALID(id));
+    g_assert(row <= list.rows);
+    g_assert(HASH_FUNC_IS_VALID(id));
 
-	GtkTreeIter iter;
+    GtkTreeIter iter;
 
-	if (!gtk_tree_model_iter_nth_child(gui.treemodel, &iter, NULL, row))
-		return NULL;
+    if (!gtk_tree_model_iter_nth_child(gui.treemodel, &iter, NULL, row))
+        return NULL;
 
-	char *digest;
-	GValue value = G_VALUE_INIT;
+    char *digest;
+    GValue value = G_VALUE_INIT;
 
-	gtk_tree_model_get_value(gui.treemodel, &iter, list_priv.hash_cols[id],
-		&value);
-	digest = g_value_dup_string(&value);
-	g_value_unset(&value);
+    gtk_tree_model_get_value(gui.treemodel, &iter, list_priv.hash_cols[id],
+        &value);
+    digest = g_value_dup_string(&value);
+    g_value_unset(&value);
 
-	return digest;
+    return digest;
 }
 
 char *list_get_selected_digest(const enum hash_func_e id)
 {
-	GList *rows = gtk_tree_selection_get_selected_rows(gui.treeselection,
-		&gui.treemodel);
+    GList *rows = gtk_tree_selection_get_selected_rows(gui.treeselection,
+        &gui.treemodel);
 
-	// Should only have one row selected
-	g_assert(rows);
-	g_assert(!rows->next);
+    // Should only have one row selected
+    g_assert(rows);
+    g_assert(!rows->next);
 
-	GtkTreePath *path = rows->data;
-	unsigned int row = *gtk_tree_path_get_indices(path);
+    GtkTreePath *path = rows->data;
+    unsigned int row = *gtk_tree_path_get_indices(path);
 
-	gtk_tree_path_free(path);
-	g_list_free(rows);
+    gtk_tree_path_free(path);
+    g_list_free(rows);
 
-	return list_get_digest(row, id);
+    return list_get_digest(row, id);
 }
 
 void list_check_digests(const unsigned int row)
 {
-	GtkTreeIter iter;
-	if (!gtk_tree_model_iter_nth_child(gui.treemodel, &iter, NULL, row))
-		return;
+    GtkTreeIter iter;
+    if (!gtk_tree_model_iter_nth_child(gui.treemodel, &iter, NULL, row))
+        return;
 
-	GValue value = G_VALUE_INIT;
-	gtk_tree_model_get_value(gui.treemodel, &iter, COL_CHECK, &value);
-	const char *check = g_value_get_string(&value);
+    GValue value = G_VALUE_INIT;
+    gtk_tree_model_get_value(gui.treemodel, &iter, COL_CHECK, &value);
+    const char *check = g_value_get_string(&value);
 
-	if (!*check) {
-		g_value_unset(&value);
-		gtk_list_store_set(gui.liststore, &iter, COL_ICON_NAME, "", -1);
-		return;
-	}
+    if (!*check) {
+        g_value_unset(&value);
+        gtk_list_store_set(gui.liststore, &iter, COL_ICON_NAME, "", -1);
+        return;
+    }
 
-	const enum digest_format_e format = gui_get_digest_format();
-	bool match = false;
+    const enum digest_format_e format = gui_get_digest_format();
+    bool match = false;
 
-	for (int i = 0; (i < HASH_FUNCS_N) && !match; i++) {
-		if (!hash.funcs[i].enabled)
-			continue;
+    for (int i = 0; (i < HASH_FUNCS_N) && !match; i++) {
+        if (!hash.funcs[i].enabled)
+            continue;
 
-		GValue digest = G_VALUE_INIT;
-		gtk_tree_model_get_value(gui.treemodel, &iter, list_priv.hash_cols[i],
-			&digest);
+        GValue digest = G_VALUE_INIT;
+        gtk_tree_model_get_value(gui.treemodel, &iter, list_priv.hash_cols[i],
+            &digest);
 
-		const char *digest_str = g_value_get_string(&digest);
-		match = gtkhash_digest_format_compare(digest_str, check, format);
+        const char *digest_str = g_value_get_string(&digest);
+        match = gtkhash_digest_format_compare(digest_str, check, format);
 
-		g_value_unset(&digest);
-	}
+        g_value_unset(&digest);
+    }
 
-	g_value_unset(&value);
+    g_value_unset(&value);
 
-	// XXX: maybe use ✓ and ✖ instead
-	gtk_list_store_set(gui.liststore, &iter, COL_ICON_NAME,
-		match ? "gtk-yes" : "gtk-no", -1);
+    // XXX: maybe use ✓ and ✖ instead
+    gtk_list_store_set(gui.liststore, &iter, COL_ICON_NAME,
+        match ? "gtk-yes" : "gtk-no", -1);
 }
 
 void list_clear_digests(void)
 {
-	GtkTreeIter iter;
+    GtkTreeIter iter;
 
-	if (!gtk_tree_model_get_iter_first(gui.treemodel, &iter))
-		return;
+    if (!gtk_tree_model_get_iter_first(gui.treemodel, &iter))
+        return;
 
-	int cols_n = 0;
+    int cols_n = 0;
 
-	for (int i = 0; i < HASH_FUNCS_N; i++)
-		if (hash.funcs[i].supported)
-			cols_n++;
+    for (int i = 0; i < HASH_FUNCS_N; i++)
+        if (hash.funcs[i].supported)
+            cols_n++;
 
-	gint cols[cols_n];
-	GValue vals[HASH_FUNCS_N] = { G_VALUE_INIT };
+    gint cols[cols_n];
+    GValue vals[HASH_FUNCS_N] = { G_VALUE_INIT };
 
-	for (int i = 0; i < cols_n; i++) {
-		cols[i] = COL_DIGESTS + i;
-		g_value_init(&vals[i], G_TYPE_STRING);
-	}
+    for (int i = 0; i < cols_n; i++) {
+        cols[i] = COL_DIGESTS + i;
+        g_value_init(&vals[i], G_TYPE_STRING);
+    }
 
-	do {
-		gtk_list_store_set_valuesv(gui.liststore, &iter, cols, vals, cols_n);
-	} while (gtk_tree_model_iter_next(gui.treemodel, &iter));
+    do {
+        gtk_list_store_set_valuesv(gui.liststore, &iter, cols, vals, cols_n);
+    } while (gtk_tree_model_iter_next(gui.treemodel, &iter));
 }
 
 void list_clear(void)
 {
-	gtk_list_store_clear(gui.liststore);
-	list.rows = 0;
-	list_priv.show_status = false;
+    gtk_list_store_clear(gui.liststore);
+    list.rows = 0;
+    list_priv.show_status = false;
 
-	list_update();
+    list_update();
 }
