@@ -438,7 +438,6 @@
                           <object class="GtkButton" id="button_hash">
                             <property name="label" translatable="yes">Ha_sh</property>
                             <property name="sensitive">False</property>
-                            <property name="can_default">True</property>
                             <property name="use_underline">True</property>
                             <child>
                               <object class="GtkImage">
@@ -450,7 +449,6 @@
                         <child>
                           <object class="GtkButton" id="button_stop">
                             <property name="label">gtk-stop</property>
-                            <property name="can_default">True</property>
                             <child>
                               <object class="GtkImage">
                                 <property name="icon_name">process-stop</property>
@@ -550,7 +548,6 @@
             <child>
               <object class="GtkButton" id="dialog_button_close">
                 <property name="label">gtk-close</property>
-                <property name="can_default">True</property>
                 <child>
                   <object class="GtkImage">
                     <property name="icon_name">window-close</property>
