@@ -54,6 +54,11 @@ struct {
 #if GTK_CHECK_VERSION(4,0,0)
 static ListDropUriFunc list_drop_handler = NULL;
 
+static void on_selection_changed(GtkTreeSelection *selection, gpointer user_data)
+{
+    list_update();
+}
+
 static gboolean on_drop(GtkDropTarget *self, const GValue *value,
     double x, double y, gpointer user_data)
 {
@@ -127,6 +132,10 @@ void list_init(void)
     g_signal_connect(drop_target, "drop", G_CALLBACK(on_drop), NULL);
     gtk_widget_add_controller(GTK_WIDGET(gui.treeview),
         GTK_EVENT_CONTROLLER(drop_target));
+
+    /* Keep the application state in sync with selection changes */
+    GtkTreeSelection *selection = gtk_tree_view_get_selection(gui.treeview);
+    g_signal_connect(selection, "changed", G_CALLBACK(on_selection_changed), NULL);
 #endif
 }
 
@@ -219,6 +228,10 @@ void list_remove_selection(void)
     g_list_free(rows);
 
     gtk_tree_selection_unselect_all(gui.treeselection);
+
+#if GTK_CHECK_VERSION(4,0,0)
+    list_update();
+#endif
 }
 
 static GFile *list_get_file(const unsigned int row)
