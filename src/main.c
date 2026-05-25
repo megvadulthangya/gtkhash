@@ -51,6 +51,22 @@ static void nls_init(void)
 }
 #endif
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+static void on_activate(GtkApplication *app, gpointer user_data)
+{
+	gui_init();
+	prefs_init();
+	check_init();
+
+	opts_postinit();
+
+	gui_set_application(app);
+	callbacks_init(app);
+
+	gtk_window_present(GTK_WINDOW(gui.window));
+}
+#endif
+
 int main(int argc, char **argv)
 {
 #if ENABLE_NLS
@@ -62,10 +78,20 @@ int main(int argc, char **argv)
 	opts_preinit(&argc, &argv);
 
 #if GTK_CHECK_VERSION(4, 0, 0)
-	gtk_init();
+	GtkApplication *app = gtk_application_new("org.gtkhash.gtkhash",
+		G_APPLICATION_FLAGS_NONE);
+	g_signal_connect(app, "activate", G_CALLBACK(on_activate), NULL);
+	int status = g_application_run(G_APPLICATION(app), argc, argv);
+	g_object_unref(app);
+
+	check_deinit();
+	prefs_deinit();
+	gui_deinit();
+	hash_deinit();
+
+	return status;
 #else
 	gtk_init(NULL, NULL);
-#endif
 
 	gui_init();
 	prefs_init();
@@ -81,4 +107,5 @@ int main(int argc, char **argv)
 	hash_deinit();
 
 	return EXIT_SUCCESS;
+#endif
 }

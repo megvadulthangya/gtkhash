@@ -22,7 +22,11 @@
 
 #include <gtk/gtk.h>
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+void callbacks_init(GtkApplication *app);
+#else
 void callbacks_init(void);
+#endif
 
 #if GTK_CHECK_VERSION(4,0,0)
 extern GFile *gui_filechooser_selected_file;

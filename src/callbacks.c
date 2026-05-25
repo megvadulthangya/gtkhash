@@ -23,6 +23,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 
@@ -35,26 +36,6 @@
 #include "check.h"
 #include "uri-digest.h"
 #include "hash/hash-string.h"
-
-#if GTK_CHECK_VERSION(4,0,0)
-GFile *gui_filechooser_selected_file = NULL;
-static gboolean filechooser_dialog_in_progress = FALSE;
-
-static void filechooserbutton_update_gtk4(GFile *file)
-{
-    if (gui_filechooser_selected_file)
-        g_object_unref(gui_filechooser_selected_file);
-    gui_filechooser_selected_file = file ? g_object_ref(file) : NULL;
-
-    bool enabled = hash_funcs_count_enabled();
-    if (enabled && file)
-        gtk_widget_set_sensitive(GTK_WIDGET(gui.button_hash), true);
-    else
-        gtk_widget_set_sensitive(GTK_WIDGET(gui.button_hash), false);
-
-    gui_clear_digests();
-}
-#endif
 
 static bool on_window_delete_event(void)
 {
@@ -604,6 +585,7 @@ static void show_menu_treeview(double x, double y)
 static void show_menu_treeview(GdkEventButton *event)
 #endif
 {
+#if !GTK_CHECK_VERSION(4,0,0)
     const int rows = gtk_tree_selection_count_selected_rows(gui.treeselection);
 
     gtk_widget_set_sensitive(GTK_WIDGET(gui.menuitem_treeview_remove),
@@ -630,6 +612,7 @@ static void show_menu_treeview(GdkEventButton *event)
 
     gtk_widget_set_sensitive(GTK_WIDGET(gui.menuitem_treeview_copy),
         can_copy);
+#endif
 
 #if GTK_CHECK_VERSION(4,0,0)
     GdkRectangle rect = { (int)x, (int)y, 1, 1 };
@@ -899,45 +882,109 @@ static void on_treeview_click_gesture_pressed(GtkGestureClick *gesture,
     }
 }
 
-static void on_filechooserbutton_dialog_response(GObject *source, GAsyncResult *res, gpointer user_data)
+static GMenuModel * create_treeview_popover_model(void)
 {
-    GtkFileDialog *dialog = GTK_FILE_DIALOG(source);
-    GError *error = NULL;
-    GFile *file = gtk_file_dialog_open_finish(dialog, res, &error);
-    if (error) {
-        if (!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
-            g_warning("File choose dialog error: %s", error->message);
-        g_error_free(error);
-        g_object_unref(dialog);
-        filechooserbutton_update_gtk4(NULL);
-        filechooser_dialog_in_progress = FALSE;
-        return;
-    }
+    GMenu *menu = g_menu_new();
 
-    filechooserbutton_update_gtk4(file);
-    g_object_unref(file);
-    g_object_unref(dialog);
-    filechooser_dialog_in_progress = FALSE;
+    g_menu_append(menu, _("_Add"), "win.treeview_add");
+    g_menu_append(menu, _("_Remove"), "win.treeview_remove");
+    g_menu_append(menu, _("_Clear"), "win.treeview_clear");
+
+    GMenu *copy_submenu = g_menu_new();
+    for (int i = 0; i < HASH_FUNCS_N; i++) {
+        if (!hash.funcs[i].supported)
+            continue;
+        gchar *action = g_strdup_printf("win.treeview_copy_hash('%s')", hash.funcs[i].name);
+        g_menu_append(copy_submenu, hash.funcs[i].name, action);
+        g_free(action);
+    }
+    g_menu_append_submenu(menu, _("Copy _Digest"), G_MENU_MODEL(copy_submenu));
+    g_object_unref(copy_submenu);
+
+    g_menu_append(menu, _("Show _Toolbar"), "win.treeview_show_toolbar");
+
+    return G_MENU_MODEL(menu);
 }
 
-static void on_filechooserbutton_clicked(GtkButton *button, gpointer user_data)
-{
-    if (filechooser_dialog_in_progress)
-        return;
-    filechooser_dialog_in_progress = TRUE;
-    GtkFileDialog *dialog = gtk_file_dialog_new();
-    gtk_file_dialog_set_title(dialog, _("Select File"));
-    gtk_file_dialog_open(dialog, GTK_WINDOW(gui.window), NULL,
-        on_filechooserbutton_dialog_response, NULL);
+// Action callbacks for GTK4
+static void on_app_quit_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    on_menuitem_quit_activate();
+}
+static void on_app_prefs_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    on_menuitem_prefs_activate();
+}
+static void on_app_about_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    on_menuitem_about_activate();
+}
+
+static void on_win_open_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    on_menuitem_open_activate();
+}
+static void on_win_save_as_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    on_menuitem_save_as_activate();
+}
+static void on_win_cut_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    on_menuitem_cut_activate();
+}
+static void on_win_copy_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    on_menuitem_copy_activate();
+}
+static void on_win_paste_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    on_menuitem_paste_activate();
+}
+static void on_win_delete_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    on_menuitem_delete_activate();
+}
+static void on_win_select_all_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    on_menuitem_select_all_activate();
+}
+static void on_win_view_mode_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    const gchar *mode = g_variant_get_string(parameter, NULL);
+    g_simple_action_set_state(action, parameter);
+    enum gui_view_e view = GUI_VIEW_INVALID;
+    if (g_strcmp0(mode, "file") == 0)
+        view = GUI_VIEW_FILE;
+    else if (g_strcmp0(mode, "text") == 0)
+        view = GUI_VIEW_TEXT;
+    else if (g_strcmp0(mode, "file_list") == 0)
+        view = GUI_VIEW_FILE_LIST;
+    if (view != GUI_VIEW_INVALID) {
+        gui_set_view(view);
+        gui_update();
+    }
+}
+static void on_win_treeview_show_toolbar_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    GVariant *state = g_action_get_state(G_ACTION(action));
+    gboolean current = g_variant_get_boolean(state);
+    g_variant_unref(state);
+    gboolean new_state = !current;
+    g_simple_action_set_state(action, g_variant_new_boolean(new_state));
+    if (gui.toolbar)
+        gtk_widget_set_visible(GTK_WIDGET(gui.toolbar), new_state);
+}
+static void on_win_treeview_copy_hash_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data) {
+    const gchar *func_name = g_variant_get_string(parameter, NULL);
+    for (int i = 0; i < HASH_FUNCS_N; i++) {
+        if (hash.funcs[i].supported && g_strcmp0(hash.funcs[i].name, func_name) == 0) {
+            on_menuitem_treeview_copy_activate(NULL, &hash.funcs[i]);
+            return;
+        }
+    }
+    g_warning("Unknown hash function: %s", func_name);
 }
 #endif
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+void callbacks_init(GtkApplication *app)
+#else
 void callbacks_init(void)
+#endif
 {
 #define CON(OBJ, SIG, CB) \
     g_signal_connect(G_OBJECT(OBJ), SIG, G_CALLBACK(CB), NULL)
 
     CON(gui.window,                         "delete-event",        on_window_delete_event);
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.menuitem_open,                  "activate",            on_menuitem_open_activate);
     CON(gui.menuitem_save_as,               "activate",            on_menuitem_save_as_activate);
     CON(gui.menuitem_quit,                  "activate",            on_menuitem_quit_activate);
@@ -952,10 +999,10 @@ void callbacks_init(void)
     CON(gui.radiomenuitem_text,             "toggled",             on_radiomenuitem_toggled);
     CON(gui.radiomenuitem_file_list,        "toggled",             on_radiomenuitem_toggled);
     CON(gui.menuitem_about,                 "activate",            on_menuitem_about_activate);
+#endif
+
 #if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.filechooserbutton,              "selection-changed",   on_filechooserbutton_selection_changed);
-#else
-    g_signal_connect(gui.filechooserbutton, "clicked", G_CALLBACK(on_filechooserbutton_clicked), NULL);
 #endif
     CON(gui.entry_text,                     "changed",             hash_string);
     CON(gui.togglebutton_hmac_file,         "toggled",             on_togglebutton_hmac_file_toggled);
@@ -980,9 +1027,11 @@ void callbacks_init(void)
     CON(gui.entry_check_file,               "icon-press",          on_entry_check_icon_press);
     CON(gui.entry_check_text,               "changed",             gui_check_digests);
     CON(gui.entry_check_text,               "icon-press",          on_entry_check_icon_press);
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.toolbutton_add,                 "clicked",             on_toolbutton_add_clicked);
     CON(gui.toolbutton_remove,              "clicked",             list_remove_selection);
     CON(gui.toolbutton_clear,               "clicked",             list_clear);
+#endif
     CON(gui.treeselection,                  "changed",             on_treeselection_changed);
     CON(gui.treeview,                       "popup-menu",          on_treeview_popup_menu);
 #if GTK_CHECK_VERSION(4,0,0)
@@ -994,10 +1043,14 @@ void callbacks_init(void)
     CON(gui.treeview,                       "button-press-event",  on_treeview_button_press_event);
     CON(gui.treeview,                       "drag-data-received",  on_treeview_drag_data_received);
 #endif
+
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.menuitem_treeview_add,          "activate",            on_toolbutton_add_clicked);
     CON(gui.menuitem_treeview_remove,       "activate",            list_remove_selection);
     CON(gui.menuitem_treeview_clear,        "activate",            list_clear);
     CON(gui.menuitem_treeview_show_toolbar, "toggled",             on_menuitem_treeview_show_toolbar_toggled);
+#endif
+
     CON(gui.button_hash,                    "clicked",             on_button_hash_clicked);
     CON(gui.button_stop,                    "clicked",             gui_stop_hash);
     CON(gui.dialog,                         "delete-event",        G_CALLBACK(on_dialog_delete_event));
@@ -1012,10 +1065,56 @@ void callbacks_init(void)
         CON(gui.hash_widgets[i].button, "toggled", gui_update);
         g_signal_connect(gui.hash_widgets[i].label_file, "clicked",
             G_CALLBACK(on_button_hash_clicked), &hash.funcs[i]);
+#if !GTK_CHECK_VERSION(4,0,0)
         g_signal_connect(gui.hash_widgets[i].menuitem_treeview_copy,
             "activate", G_CALLBACK(on_menuitem_treeview_copy_activate),
             &hash.funcs[i]);
+#endif
     }
+
+#if GTK_CHECK_VERSION(4,0,0)
+    // Register GTK4 actions
+    {
+        const GActionEntry app_entries[] = {
+            { "quit",        on_app_quit_activate,   NULL, NULL, NULL },
+            { "preferences", on_app_prefs_activate,  NULL, NULL, NULL },
+            { "about",       on_app_about_activate,   NULL, NULL, NULL },
+        };
+        g_action_map_add_action_entries(G_ACTION_MAP(app), app_entries, G_N_ELEMENTS(app_entries), NULL);
+
+        const GActionEntry win_entries[] = {
+            { "open",        on_win_open_activate,        NULL, NULL, NULL },
+            { "save_as",     on_win_save_as_activate,     NULL, NULL, NULL },
+            { "cut",         on_win_cut_activate,         NULL, NULL, NULL },
+            { "copy",        on_win_copy_activate,        NULL, NULL, NULL },
+            { "paste",       on_win_paste_activate,       NULL, NULL, NULL },
+            { "delete",      on_win_delete_activate,      NULL, NULL, NULL },
+            { "select_all",  on_win_select_all_activate,  NULL, NULL, NULL },
+            { "treeview_add",    on_toolbutton_add_clicked,   NULL, NULL, NULL },
+            { "treeview_remove", list_remove_selection,       NULL, NULL, NULL },
+            { "treeview_clear",  list_clear,                  NULL, NULL, NULL },
+            { "treeview_copy_hash", on_win_treeview_copy_hash_activate, "s", NULL, NULL },
+        };
+        g_action_map_add_action_entries(G_ACTION_MAP(gui.window), win_entries, G_N_ELEMENTS(win_entries), NULL);
+
+        // Stateful view mode action
+        GSimpleAction *view_action = g_simple_action_new_stateful("view_mode",
+            G_VARIANT_TYPE_STRING, g_variant_new_string("file"));
+        g_signal_connect(view_action, "activate", G_CALLBACK(on_win_view_mode_activate), NULL);
+        g_action_map_add_action(G_ACTION_MAP(gui.window), G_ACTION(view_action));
+
+        // Stateful treeview_show_toolbar action
+        GSimpleAction *toolbar_action = g_simple_action_new_stateful("treeview_show_toolbar",
+            NULL, g_variant_new_boolean(FALSE));
+        g_signal_connect(toolbar_action, "activate", G_CALLBACK(on_win_treeview_show_toolbar_activate), NULL);
+        g_action_map_add_action(G_ACTION_MAP(gui.window), G_ACTION(toolbar_action));
+
+        // Replace treeview popover model with dynamic one
+        GMenuModel *treeview_menu = create_treeview_popover_model();
+        gtk_popover_menu_set_menu_model(GTK_POPOVER_MENU(gui.menu_treeview), treeview_menu);
+        g_object_unref(treeview_menu);
+    }
+#endif
 
 #undef CON
 }

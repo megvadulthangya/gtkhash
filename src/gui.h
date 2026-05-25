@@ -143,4 +143,8 @@ bool gui_is_maximised(void);
 void gui_start_hash(void);
 void gui_stop_hash(void);
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+void gui_set_application(GtkApplication *app);
+#endif
+
 #endif

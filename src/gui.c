@@ -219,6 +219,8 @@ static void gui_init_objects(GtkBuilder *builder)
         "treeview"));
 #if GTK_CHECK_VERSION(4, 0, 0)
     gui.treeselection = gtk_tree_view_get_selection(gui.treeview);
+    gui.menu_treeview = GTK_WIDGET(gui_get_object(builder,
+        "menu_treeview"));
 #else
     gui.treeselection = GTK_TREE_SELECTION(gui_get_object(builder,
         "treeselection"));
@@ -366,6 +368,16 @@ static void gui_init_hash_funcs(void)
         supported++;
     }
 }
+
+#if GTK_CHECK_VERSION(4, 0, 0)
+static GtkApplication *gui_app = NULL;
+
+void gui_set_application(GtkApplication *app)
+{
+    gui_app = app;
+    gtk_window_set_application(GTK_WINDOW(gui.window), app);
+}
+#endif
 
 void gui_init(void)
 {
@@ -539,7 +551,11 @@ void gui_run(void)
 #endif
 
     // Connect signals to start handling events
+#if GTK_CHECK_VERSION(4, 0, 0)
+    // callbacks_init() already called from on_activate with the GtkApplication
+#else
     callbacks_init();
+#endif
 
 #if GTK_CHECK_VERSION(4, 0, 0)
     while (gtk_widget_get_visible(GTK_WIDGET(gui.window))) {
@@ -949,6 +965,17 @@ void gui_update(void)
             gtk_widget_set_visible(GTK_WIDGET(gui.toolbar),
                 gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(
                     gui.menuitem_treeview_show_toolbar)));
+#else
+            if (gui.toolbar) {
+                GAction *action = g_action_map_lookup_action(
+                    G_ACTION_MAP(gui.window), "treeview_show_toolbar");
+                if (action) {
+                    GVariant *state = g_action_get_state(action);
+                    gtk_widget_set_visible(GTK_WIDGET(gui.toolbar),
+                        g_variant_get_boolean(state));
+                    g_variant_unref(state);
+                }
+            }
 #endif
             break;
         default:

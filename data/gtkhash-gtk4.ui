@@ -103,40 +103,7 @@
     </submenu>
   </menu>
 
-  <menu id="menu_treeview_model">
-    <item>
-      <attribute name="id">menuitem_treeview_add</attribute>
-      <attribute name="label">gtk-add</attribute>
-      <attribute name="action">win.treeview_add</attribute>
-      <attribute name="icon">list-add</attribute>
-    </item>
-    <item>
-      <attribute name="id">menuitem_treeview_remove</attribute>
-      <attribute name="label">gtk-remove</attribute>
-      <attribute name="action">win.treeview_remove</attribute>
-      <attribute name="icon">list-remove</attribute>
-    </item>
-    <item>
-      <attribute name="id">menuitem_treeview_clear</attribute>
-      <attribute name="label">gtk-clear</attribute>
-      <attribute name="action">win.treeview_clear</attribute>
-      <attribute name="icon">edit-clear</attribute>
-    </item>
-    <item>
-      <attribute name="id">menuitem_treeview_copy</attribute>
-      <attribute name="label" translatable="yes">Copy _Digest</attribute>
-      <attribute name="action">win.treeview_copy</attribute>
-      <attribute name="icon">edit-copy</attribute>
-    </item>
-    <item>
-      <attribute name="id">menuitem_treeview_show_toolbar</attribute>
-      <attribute name="label" translatable="yes">Show _Toolbar</attribute>
-      <attribute name="action">win.treeview_show_toolbar</attribute>
-    </item>
-  </menu>
-
   <object class="GtkPopoverMenu" id="menu_treeview">
-    <property name="menu-model">menu_treeview_model</property>
     <property name="has-arrow">False</property>
   </object>
 
@@ -170,7 +137,7 @@
     <property name="icon_name">document-save-as</property>
   </object>
 
-  <object class="GtkWindow" id="window">
+  <object class="GtkApplicationWindow" id="window">
     <property name="title">GtkHash</property>
     <property name="default_width">500</property>
     <property name="default_height">340</property>
