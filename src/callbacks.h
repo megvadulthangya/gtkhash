@@ -28,8 +28,4 @@ void callbacks_init(GtkApplication *app);
 void callbacks_init(void);
 #endif
 
-#if GTK_CHECK_VERSION(4,0,0)
-extern GFile *gui_filechooser_selected_file;
-#endif
-
 #endif

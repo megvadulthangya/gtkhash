@@ -145,6 +145,9 @@ void gui_stop_hash(void);
 
 #if GTK_CHECK_VERSION(4, 0, 0)
 void gui_set_application(GtkApplication *app);
+void gui_filechooserbutton_set_uri(const char *uri);
+char *gui_filechooserbutton_get_uri(void);
+extern GFile *gui_filechooser_selected_file;
 #endif
 
 #endif

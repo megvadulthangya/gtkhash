@@ -988,6 +988,35 @@ static void on_win_treeview_clear_activate(GSimpleAction *action, GVariant *para
 {
     list_clear();
 }
+
+/* GTK4 file chooser button dialog - now integrated with gui.c globals */
+static void on_filechooserbutton_dialog_response(GObject *source, GAsyncResult *res, gpointer user_data)
+{
+    GtkFileDialog *dialog = GTK_FILE_DIALOG(source);
+    GError *error = NULL;
+    GFile *file = gtk_file_dialog_open_finish(dialog, res, &error);
+    if (file) {
+        char *uri = g_file_get_uri(file);
+        gui_filechooserbutton_set_uri(uri);
+        g_free(uri);
+        g_object_unref(file);
+        gui_update();
+    } else if (error) {
+        g_warning("File chooser error: %s", error->message);
+        g_error_free(error);
+    }
+    g_object_unref(dialog);
+}
+
+static void on_filechooserbutton_clicked(GtkButton *button, gpointer user_data)
+{
+    GtkWindow *window = GTK_WINDOW(gui.window);
+    GtkFileDialog *dialog = gtk_file_dialog_new();
+    gtk_file_dialog_set_title(dialog, _("Open File"));
+    gtk_file_dialog_open(dialog, window, NULL,
+                         (GAsyncReadyCallback) on_filechooserbutton_dialog_response,
+                         NULL);
+}
 #endif
 
 #if GTK_CHECK_VERSION(4, 0, 0)
@@ -1019,6 +1048,10 @@ void callbacks_init(void)
 
 #if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.filechooserbutton,              "selection-changed",   on_filechooserbutton_selection_changed);
+#else
+    /* Single connection for GTK4 file chooser button */
+    g_signal_connect(gui.filechooserbutton, "clicked",
+                     G_CALLBACK(on_filechooserbutton_clicked), NULL);
 #endif
     CON(gui.entry_text,                     "changed",             hash_string);
     CON(gui.togglebutton_hmac_file,         "toggled",             on_togglebutton_hmac_file_toggled);
