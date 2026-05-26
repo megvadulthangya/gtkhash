@@ -100,12 +100,12 @@ extern struct gui_s {
     GtkButton *button_hash, *button_stop;
     GtkDialog *dialog;
     GtkGrid *dialog_grid;
-    GtkToggleButton *dialog_togglebutton_show_hmac;
+    GtkWidget *dialog_togglebutton_show_hmac;
     GtkComboBox *dialog_combobox;
     GtkButton *dialog_button_close;
     enum gui_view_e view;
     struct {
-        GtkToggleButton *button;
+        GtkWidget *button;
 #if GTK_CHECK_VERSION(4, 0, 0)
         GtkButton *label_file;
 #else

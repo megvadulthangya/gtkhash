@@ -254,7 +254,7 @@ static void gui_init_objects(GtkBuilder *builder)
         "dialog"));
     gui.dialog_grid = GTK_GRID(gui_get_object(builder,
         "dialog_grid"));
-    gui.dialog_togglebutton_show_hmac = GTK_TOGGLE_BUTTON(gui_get_object(builder,
+    gui.dialog_togglebutton_show_hmac = GTK_WIDGET(gui_get_object(builder,
         "dialog_togglebutton_show_hmac"));
     gui.dialog_combobox = GTK_COMBO_BOX(gui_get_object(builder,
         "dialog_combobox"));
@@ -341,8 +341,7 @@ static void gui_init_hash_funcs(void)
 #endif
 
         // Dialog checkbuttons
-        gui.hash_widgets[i].button = GTK_TOGGLE_BUTTON(
-            gtk_check_button_new_with_label(hash.funcs[i].name));
+        gui.hash_widgets[i].button = gtk_check_button_new_with_label(hash.funcs[i].name);
         gtk_grid_attach(gui.dialog_grid,
             GTK_WIDGET(gui.hash_widgets[i].button),
             supported % 3, // column
@@ -754,7 +753,7 @@ void gui_enable_hash_func(const enum hash_func_e id)
 #if GTK_MAJOR_VERSION >= 4
         gtk_check_button_set_active(GTK_CHECK_BUTTON(gui.hash_widgets[id].button), TRUE);
 #else
-        gtk_toggle_button_set_active(gui.hash_widgets[id].button, true);
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gui.hash_widgets[id].button), true);
 #endif
     }
 }
@@ -793,7 +792,7 @@ void gui_update_hash_funcs(void)
 #if GTK_MAJOR_VERSION >= 4
         hash.funcs[i].enabled = gtk_check_button_get_active(GTK_CHECK_BUTTON(gui.hash_widgets[i].button));
 #else
-        hash.funcs[i].enabled = gtk_toggle_button_get_active(gui.hash_widgets[i].button);
+        hash.funcs[i].enabled = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.hash_widgets[i].button));
 #endif
 
         gtk_widget_set_visible(GTK_WIDGET(gui.hash_widgets[i].label_file),
@@ -816,7 +815,7 @@ static void gui_update_hmac(void)
 #if GTK_MAJOR_VERSION >= 4
     bool enabled = gtk_check_button_get_active(GTK_CHECK_BUTTON(gui.dialog_togglebutton_show_hmac));
 #else
-    bool enabled = gtk_toggle_button_get_active(gui.dialog_togglebutton_show_hmac);
+    bool enabled = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.dialog_togglebutton_show_hmac));
 #endif
     bool active = false;
 

@@ -97,8 +97,10 @@ void list_init(void)
             continue;
 
         list_priv.hash_cols[i] = cols;
+        GtkCellRenderer *renderer = gtk_cell_renderer_text_new();
+        g_object_set(renderer, "ellipsize", PANGO_ELLIPSIZE_END, NULL);
         cols = gtk_tree_view_insert_column_with_attributes(gui.treeview, -1,
-            hash.funcs[i].name, gtk_cell_renderer_text_new(),
+            hash.funcs[i].name, renderer,
             "text", cols, NULL);
     }
 

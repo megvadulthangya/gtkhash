@@ -298,8 +298,10 @@ static void on_menuitem_edit_activate(void)
     if (GTK_IS_ENTRY(widget)) {
         selectable = gtk_entry_get_text_length(GTK_ENTRY(widget));
         editable = gtk_editable_get_editable(GTK_EDITABLE(widget));
-        selection_ready = gtk_editable_get_selection_bounds(
-            GTK_EDITABLE(widget), NULL, NULL);
+        if (GTK_IS_EDITABLE(widget)) {
+            selection_ready = gtk_editable_get_selection_bounds(
+                GTK_EDITABLE(widget), NULL, NULL);
+        }
 #if GTK_CHECK_VERSION(4,0,0)
         GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(widget));
         GdkContentFormats *formats = gdk_clipboard_get_formats(clipboard);
@@ -361,50 +363,63 @@ static void clipboard_paste(GtkEditable *editable, GdkClipboard *clipboard)
 
 static void on_menuitem_cut_activate(void)
 {
-    GtkEditable *widget = GTK_EDITABLE(gtk_window_get_focus(gui.window));
+    GtkWidget *widget = gtk_window_get_focus(gui.window);
+    if (!GTK_IS_EDITABLE(widget))
+        return;
+    GtkEditable *editable = GTK_EDITABLE(widget);
 #if GTK_CHECK_VERSION(4,0,0)
-    GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(widget));
-    clipboard_store_selection(widget, clipboard, true);
+    GdkClipboard *clipboard = gtk_widget_get_clipboard(widget);
+    clipboard_store_selection(editable, clipboard, true);
 #else
-    gtk_editable_cut_clipboard(widget);
+    gtk_editable_cut_clipboard(editable);
 #endif
 }
 
 static void on_menuitem_copy_activate(void)
 {
-    GtkEditable *widget = GTK_EDITABLE(gtk_window_get_focus(gui.window));
+    GtkWidget *widget = gtk_window_get_focus(gui.window);
+    if (!GTK_IS_EDITABLE(widget))
+        return;
+    GtkEditable *editable = GTK_EDITABLE(widget);
 #if GTK_CHECK_VERSION(4,0,0)
-    GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(widget));
-    clipboard_store_selection(widget, clipboard, false);
+    GdkClipboard *clipboard = gtk_widget_get_clipboard(widget);
+    clipboard_store_selection(editable, clipboard, false);
 #else
-    gtk_editable_copy_clipboard(widget);
+    gtk_editable_copy_clipboard(editable);
 #endif
 }
 
 static void on_menuitem_paste_activate(void)
 {
-    GtkEditable *widget = GTK_EDITABLE(gtk_window_get_focus(gui.window));
+    GtkWidget *widget = gtk_window_get_focus(gui.window);
+    if (!GTK_IS_EDITABLE(widget))
+        return;
+    GtkEditable *editable = GTK_EDITABLE(widget);
 #if GTK_CHECK_VERSION(4,0,0)
-    GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(widget));
-    clipboard_paste(widget, clipboard);
+    GdkClipboard *clipboard = gtk_widget_get_clipboard(widget);
+    clipboard_paste(editable, clipboard);
 #else
-    gtk_editable_paste_clipboard(widget);
+    gtk_editable_paste_clipboard(editable);
 #endif
 }
 
 static void on_menuitem_delete_activate(void)
 {
-    GtkEditable *widget = GTK_EDITABLE(gtk_window_get_focus(gui.window));
-
-    gtk_editable_delete_selection(widget);
+    GtkWidget *widget = gtk_window_get_focus(gui.window);
+    if (!GTK_IS_EDITABLE(widget))
+        return;
+    GtkEditable *editable = GTK_EDITABLE(widget);
+    gtk_editable_delete_selection(editable);
 }
 
 static void on_menuitem_select_all_activate(void)
 {
-    GtkEditable *widget = GTK_EDITABLE(gtk_window_get_focus(gui.window));
-
-    gtk_editable_set_position(widget, -1);
-    gtk_editable_select_region(widget, 0, -1);
+    GtkWidget *widget = gtk_window_get_focus(gui.window);
+    if (!GTK_IS_EDITABLE(widget))
+        return;
+    GtkEditable *editable = GTK_EDITABLE(widget);
+    gtk_editable_set_position(editable, -1);
+    gtk_editable_select_region(editable, 0, -1);
 }
 
 static void on_menuitem_prefs_activate(void)
@@ -615,9 +630,11 @@ static void show_menu_treeview(GdkEventButton *event)
 #endif
 
 #if GTK_CHECK_VERSION(4,0,0)
-    GdkRectangle rect = { (int)x, (int)y, 1, 1 };
-    gtk_popover_set_pointing_to(GTK_POPOVER(gui.menu_treeview), &rect);
-    gtk_popover_popup(GTK_POPOVER(gui.menu_treeview));
+    if (GTK_IS_POPOVER(gui.menu_treeview)) {
+        GdkRectangle rect = { (int)x, (int)y, 1, 1 };
+        gtk_popover_set_pointing_to(GTK_POPOVER(gui.menu_treeview), &rect);
+        gtk_popover_popup(GTK_POPOVER(gui.menu_treeview));
+    }
 #elif GTK_CHECK_VERSION(3,22,0)
     gtk_menu_popup_at_pointer(GTK_MENU(gui.menu_treeview), (GdkEvent *)event);
 #else
@@ -1191,10 +1208,14 @@ void callbacks_init(void)
         g_signal_connect(toolbar_action, "activate", G_CALLBACK(on_win_treeview_show_toolbar_activate), NULL);
         g_action_map_add_action(G_ACTION_MAP(gui.window), G_ACTION(toolbar_action));
 
-        // Replace treeview popover model with dynamic one
-        GMenuModel *treeview_menu = create_treeview_popover_model();
-        gtk_popover_menu_set_menu_model(GTK_POPOVER_MENU(gui.menu_treeview), treeview_menu);
-        g_object_unref(treeview_menu);
+        // Replace treeview popover model with dynamic one, but only if menu_treeview is a GtkPopoverMenu
+        if (GTK_IS_POPOVER_MENU(gui.menu_treeview)) {
+            GMenuModel *treeview_menu = create_treeview_popover_model();
+            gtk_popover_menu_set_menu_model(GTK_POPOVER_MENU(gui.menu_treeview), treeview_menu);
+            g_object_unref(treeview_menu);
+        } else {
+            g_warning("menu_treeview is not a GtkPopoverMenu, cannot set menu model");
+        }
     }
 #endif
 

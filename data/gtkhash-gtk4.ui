@@ -313,6 +313,8 @@
                         <property name="show_expanders">False</property>
                         <property name="rubber_banding">True</property>
                         <property name="tooltip_column">3</property>
+                        <property name="hexpand">True</property>
+                        <property name="vexpand">True</property>
                         <child>
                           <object class="GtkTreeViewColumn" id="treeviewcolumn_status">
                             <property name="visible">False</property>
@@ -348,7 +350,9 @@
                             <property name="sort_indicator">True</property>
                             <property name="sort_column_id">2</property>
                             <child>
-                              <object class="GtkCellRendererText" id="cellrenderer_file"/>
+                              <object class="GtkCellRendererText" id="cellrenderer_file">
+                                <property name="ellipsize">end</property>
+                              </object>
                               <attributes>
                                 <attribute name="text">2</attribute>
                               </attributes>
@@ -406,6 +410,8 @@
                       <object class="GtkBox" id="hbuttonbox">
                         <property name="spacing">6</property>
                         <property name="halign">end</property>
+                        <property name="hexpand">False</property>
+                        <property name="vexpand">False</property>
                         <child>
                           <object class="GtkButton" id="button_hash">
                             <property name="sensitive">False</property>
