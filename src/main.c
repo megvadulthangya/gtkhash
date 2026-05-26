@@ -18,7 +18,7 @@
  */
 
 #ifdef HAVE_CONFIG_H
-	#include "config.h"
+    #include "config.h"
 #endif
 
 #include <stdlib.h>
@@ -38,75 +38,81 @@
 static void nls_init(void)
 {
 #ifdef G_OS_WIN32
-	char *pkgdir = g_win32_get_package_installation_directory_of_module(NULL);
-	char *localedir = g_build_filename(pkgdir, "share", "locale", NULL);
-	bindtextdomain(GETTEXT_PACKAGE, localedir);
-	g_free(localedir);
-	g_free(pkgdir);
+    char *pkgdir = g_win32_get_package_installation_directory_of_module(NULL);
+    char *localedir = g_build_filename(pkgdir, "share", "locale", NULL);
+    bindtextdomain(GETTEXT_PACKAGE, localedir);
+    g_free(localedir);
+    g_free(pkgdir);
 #else
-	bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+    bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
 #endif
 
-	bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
-	textdomain(GETTEXT_PACKAGE);
+    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
+    textdomain(GETTEXT_PACKAGE);
 }
 #endif
 
 #if GTK_CHECK_VERSION(4, 0, 0)
 static void on_activate(GtkApplication *app, gpointer user_data)
 {
-	gui_init();
-	prefs_init();
-	check_init();
+    gui_init();
+    prefs_init();
+    check_init();
 
-	opts_postinit();
+    opts_postinit();
 
-	gui_set_application(app);
-	callbacks_init(app);
+    /* Ensure a valid default view if none set by prefs or command line */
+    if (!GUI_VIEW_IS_VALID(gui.view)) {
+        gui_set_view(GUI_VIEW_FILE);
+        gui_update();
+    }
 
-	gtk_window_present(GTK_WINDOW(gui.window));
+    gui_set_application(app);
+    callbacks_init(app);
+
+    gtk_window_present(GTK_WINDOW(gui.window));
 }
 #endif
 
 int main(int argc, char **argv)
 {
 #if ENABLE_NLS
-	nls_init();
+    nls_init();
 #endif
 
-	hash_init();
+    hash_init();
 
-	opts_preinit(&argc, &argv);
+    opts_preinit(&argc, &argv);
 
 #if GTK_CHECK_VERSION(4, 0, 0)
-	GtkApplication *app = gtk_application_new("org.gtkhash.gtkhash",
-		G_APPLICATION_FLAGS_NONE);
-	g_signal_connect(app, "activate", G_CALLBACK(on_activate), NULL);
-	int status = g_application_run(G_APPLICATION(app), argc, argv);
-	g_object_unref(app);
+    GtkApplication *app = gtk_application_new("org.gtkhash.gtkhash",
+        G_APPLICATION_FLAGS_NONE);
+    g_signal_connect(app, "activate", G_CALLBACK(on_activate), NULL);
+    int status = g_application_run(G_APPLICATION(app), argc, argv);
+    g_object_unref(app);
 
-	check_deinit();
-	prefs_deinit();
-	gui_deinit();
-	hash_deinit();
+    check_deinit();
+    prefs_deinit();
+    gui_deinit();
+    hash_deinit();
 
-	return status;
+    return status;
 #else
-	gtk_init(NULL, NULL);
+    gtk_init(NULL, NULL);
 
-	gui_init();
-	prefs_init();
-	check_init();
+    gui_init();
+    prefs_init();
+    check_init();
 
-	opts_postinit();
+    opts_postinit();
 
-	gui_run();
+    gui_run();
 
-	check_deinit();
-	prefs_deinit();
-	gui_deinit();
-	hash_deinit();
+    check_deinit();
+    prefs_deinit();
+    gui_deinit();
+    hash_deinit();
 
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 #endif
 }

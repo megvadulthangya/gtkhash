@@ -631,17 +631,32 @@ static void show_menu_treeview(GdkEventButton *event)
 #endif
 }
 
+#if GTK_CHECK_VERSION(4,0,0)
+static gboolean on_treeview_key_pressed(GtkEventControllerKey *controller,
+                                        guint keyval, guint keycode,
+                                        GdkModifierType state,
+                                        gpointer user_data)
+{
+    if ((keyval == GDK_KEY_Menu) ||
+        (keyval == GDK_KEY_F10 && (state & GDK_SHIFT_MASK)))
+    {
+        show_menu_treeview(0, 0);
+        return GDK_EVENT_STOP;
+    }
+
+    return GDK_EVENT_PROPAGATE;
+}
+#endif
+
+#if !GTK_CHECK_VERSION(4,0,0)
 static void on_treeview_popup_menu(void)
 {
     /* Note: Shift+F10 can trigger this, so it's possible for the pointer
        to be outside the window */
 
-#if GTK_CHECK_VERSION(4,0,0)
-    show_menu_treeview(0, 0);
-#else
     show_menu_treeview(NULL);
-#endif
 }
+#endif
 
 #if !GTK_CHECK_VERSION(4,0,0)
 static bool on_treeview_button_press_event(G_GNUC_UNUSED GtkWidget *widget,
@@ -1028,7 +1043,12 @@ void callbacks_init(void)
 #define CON(OBJ, SIG, CB) \
     g_signal_connect(G_OBJECT(OBJ), SIG, G_CALLBACK(CB), NULL)
 
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.window,                         "delete-event",        on_window_delete_event);
+#else
+    g_signal_connect(gui.window, "close-request", G_CALLBACK(on_window_delete_event), NULL);
+#endif
+
 #if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.menuitem_open,                  "activate",            on_menuitem_open_activate);
     CON(gui.menuitem_save_as,               "activate",            on_menuitem_save_as_activate);
@@ -1082,7 +1102,16 @@ void callbacks_init(void)
     CON(gui.toolbutton_clear,               "clicked",             list_clear);
 #endif
     CON(gui.treeselection,                  "changed",             on_treeselection_changed);
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.treeview,                       "popup-menu",          on_treeview_popup_menu);
+#else
+    {
+        GtkEventController *key_controller = gtk_event_controller_key_new();
+        g_signal_connect(key_controller, "key-pressed",
+                         G_CALLBACK(on_treeview_key_pressed), NULL);
+        gtk_widget_add_controller(GTK_WIDGET(gui.treeview), key_controller);
+    }
+#endif
 #if GTK_CHECK_VERSION(4,0,0)
     GtkGesture *treeview_gesture = gtk_gesture_click_new();
     gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(treeview_gesture), 0);
@@ -1102,7 +1131,11 @@ void callbacks_init(void)
 
     CON(gui.button_hash,                    "clicked",             on_button_hash_clicked);
     CON(gui.button_stop,                    "clicked",             gui_stop_hash);
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.dialog,                         "delete-event",        G_CALLBACK(on_dialog_delete_event));
+#else
+    g_signal_connect(gui.dialog, "close-request", G_CALLBACK(on_dialog_delete_event), NULL);
+#endif
     CON(gui.dialog_button_close,            "clicked",             G_CALLBACK(on_dialog_delete_event));
     CON(gui.dialog_togglebutton_show_hmac,  "toggled",             gui_update);
     CON(gui.dialog_combobox,                "changed",             on_dialog_combobox_changed);
