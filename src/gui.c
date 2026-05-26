@@ -22,6 +22,7 @@
 #endif
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
@@ -215,6 +216,11 @@ static void gui_init_objects(GtkBuilder *builder)
     gui.treeselection = gtk_tree_view_get_selection(gui.treeview);
     gui.menu_treeview = GTK_WIDGET(gui_get_object(builder,
         "menu_treeview"));
+    if (!GTK_IS_POPOVER_MENU(gui.menu_treeview)) {
+        g_warning("menu_treeview is not a GtkPopoverMenu, creating one programmatically.");
+        g_object_unref(gui.menu_treeview);
+        gui.menu_treeview = gtk_popover_menu_new();
+    }
 #else
     gui.treeselection = GTK_TREE_SELECTION(gui_get_object(builder,
         "treeselection"));
@@ -307,6 +313,7 @@ static void gui_init_hash_funcs(void)
         // File view digests
         gui.hash_widgets[i].entry_file = GTK_ENTRY(gtk_entry_new());
 #if GTK_CHECK_VERSION(4, 0, 0)
+        gtk_widget_set_hexpand(GTK_WIDGET(gui.hash_widgets[i].entry_file), TRUE);
         gtk_box_append(GTK_BOX(gui.vbox_digests_file),
             GTK_WIDGET(gui.hash_widgets[i].entry_file));
 #else
@@ -321,6 +328,7 @@ static void gui_init_hash_funcs(void)
         // Text view digests
         gui.hash_widgets[i].entry_text = GTK_ENTRY(gtk_entry_new());
 #if GTK_CHECK_VERSION(4, 0, 0)
+        gtk_widget_set_hexpand(GTK_WIDGET(gui.hash_widgets[i].entry_text), TRUE);
         gtk_box_append(GTK_BOX(gui.vbox_digests_text),
             GTK_WIDGET(gui.hash_widgets[i].entry_text));
 #else
@@ -704,6 +712,8 @@ static void gui_menuitem_save_as_set_sensitive(void)
     switch (gui.view) {
         case GUI_VIEW_FILE:
             for (int i = 0; i < HASH_FUNCS_N; i++) {
+                if (!hash.funcs[i].supported)
+                    continue;
 #if GTK_CHECK_VERSION(4, 0, 0)
                 const char *entry_text_val = gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[i].entry_file));
                 if (hash.funcs[i].enabled && entry_text_val && *entry_text_val)

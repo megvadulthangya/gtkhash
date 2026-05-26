@@ -165,13 +165,40 @@ static void load_view(void)
     g_free(str);
 }
 
+#if GTK_MAJOR_VERSION >= 4
+static gboolean show_toolbar_get_mapping(GValue *value, GVariant *variant, gpointer user_data)
+{
+    g_value_set_boolean(value, g_variant_get_boolean(variant));
+    return TRUE;
+}
+
+static GVariant * show_toolbar_set_mapping(const GValue *value, const GVariantType *expected_type, gpointer user_data)
+{
+    return g_variant_new_boolean(g_value_get_boolean(value));
+}
+#endif
+
 static void load_show_widgets(void)
 {
     g_settings_bind(prefs_priv.settings, PREFS_KEY_SHOW_HMAC,
         gui.dialog_togglebutton_show_hmac, "active", PREFS_BIND_FLAGS);
 
+#if !GTK_CHECK_VERSION(4, 0, 0)
     g_settings_bind(prefs_priv.settings, PREFS_KEY_SHOW_TOOLBAR,
         gui.menuitem_treeview_show_toolbar, "active", PREFS_BIND_FLAGS);
+#else
+    GAction *action = g_action_map_lookup_action(G_ACTION_MAP(gui.window), "treeview_show_toolbar");
+    if (action) {
+        gboolean show = g_settings_get_boolean(prefs_priv.settings, PREFS_KEY_SHOW_TOOLBAR);
+        g_action_change_state(action, g_variant_new_boolean(show));
+
+        g_settings_bind_with_mapping(prefs_priv.settings, PREFS_KEY_SHOW_TOOLBAR,
+            action, "state", G_SETTINGS_BIND_DEFAULT,
+            show_toolbar_get_mapping,
+            show_toolbar_set_mapping,
+            NULL, NULL);
+    }
+#endif
 }
 
 #if GTK_MAJOR_VERSION >= 4
