@@ -63,7 +63,11 @@ static void select_hash_func(const enum hash_func_e id, const bool active)
 	if (hash.funcs[id].enabled == active)
 		return;
 
-	gtk_toggle_button_set_active(gui.hash_widgets[id].button, active);
+#if GTK_MAJOR_VERSION >= 4
+	gtk_check_button_set_active(GTK_CHECK_BUTTON(gui.hash_widgets[id].button), active);
+#else
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gui.hash_widgets[id].button), active);
+#endif
 	delay();
 
 	g_assert_true(hash.funcs[id].enabled == active);
@@ -89,7 +93,11 @@ static void test_hash_func_digest(const enum hash_func_e id, const char *text,
 #endif
 
 	if (hmac) {
-		gtk_toggle_button_set_active(gui.dialog_togglebutton_show_hmac, true);
+#if GTK_MAJOR_VERSION >= 4
+		gtk_check_button_set_active(GTK_CHECK_BUTTON(gui.dialog_togglebutton_show_hmac), TRUE);
+#else
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gui.dialog_togglebutton_show_hmac), true);
+#endif
 		gtk_toggle_button_set_active(gui.togglebutton_hmac_text, true);
 #if GTK_MAJOR_VERSION >= 4
 		gtk_editable_set_text(GTK_EDITABLE(gui.entry_hmac_text), hmac);
@@ -97,7 +105,11 @@ static void test_hash_func_digest(const enum hash_func_e id, const char *text,
 		gtk_entry_set_text(GTK_ENTRY(gui.entry_hmac_text), hmac);
 #endif
 	} else {
-		gtk_toggle_button_set_active(gui.dialog_togglebutton_show_hmac, false);
+#if GTK_MAJOR_VERSION >= 4
+		gtk_check_button_set_active(GTK_CHECK_BUTTON(gui.dialog_togglebutton_show_hmac), FALSE);
+#else
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gui.dialog_togglebutton_show_hmac), false);
+#endif
 		gtk_toggle_button_set_active(gui.togglebutton_hmac_text, false);
 #if GTK_MAJOR_VERSION >= 4
 		gtk_editable_set_text(GTK_EDITABLE(gui.entry_hmac_text), "");
@@ -491,7 +503,11 @@ static void test_opt_function(void)
 			exit(EXIT_FAILURE);
 
 		// Disable the function
-		gtk_toggle_button_set_active(gui.hash_widgets[id].button, false);
+#if GTK_MAJOR_VERSION >= 4
+		gtk_check_button_set_active(GTK_CHECK_BUTTON(gui.hash_widgets[id].button), FALSE);
+#else
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gui.hash_widgets[id].button), false);
+#endif
 		delay();
 
 		if (hash.funcs[id].enabled)
