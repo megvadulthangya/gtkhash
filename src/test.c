@@ -756,6 +756,14 @@ int main(int argc, char **argv)
 	gui_init();
 	check_init();
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+	GtkApplication *app = gtk_application_new("org.gtkhash.test", G_APPLICATION_FLAGS_NONE);
+	gui_set_application(app);
+	callbacks_init(app);
+#else
+	callbacks_init();
+#endif
+
 	// Ignore user input during testing
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.window), false);
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.dialog), false);
@@ -763,7 +771,6 @@ int main(int argc, char **argv)
 	gtk_widget_show(GTK_WIDGET(gui.window));
 	gtk_widget_show(GTK_WIDGET(gui.dialog));
 
-	callbacks_init();
 	test_init();
 
 	g_test_set_nonfatal_assertions();
@@ -772,6 +779,10 @@ int main(int argc, char **argv)
 	check_deinit();
 	gui_deinit();
 	hash_deinit();
+
+#if GTK_CHECK_VERSION(4, 0, 0)
+	g_object_unref(app);
+#endif
 
 	return status;
 }
