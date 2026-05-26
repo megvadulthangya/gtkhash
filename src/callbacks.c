@@ -972,6 +972,22 @@ static void on_win_treeview_copy_hash_activate(GSimpleAction *action, GVariant *
     }
     g_warning("Unknown hash function: %s", func_name);
 }
+
+/* Proper GAction wrappers for existing helper functions */
+static void on_win_treeview_add_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    on_toolbutton_add_clicked();
+}
+
+static void on_win_treeview_remove_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    list_remove_selection();
+}
+
+static void on_win_treeview_clear_activate(GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+    list_clear();
+}
 #endif
 
 #if GTK_CHECK_VERSION(4, 0, 0)
@@ -1090,9 +1106,9 @@ void callbacks_init(void)
             { "paste",       on_win_paste_activate,       NULL, NULL, NULL },
             { "delete",      on_win_delete_activate,      NULL, NULL, NULL },
             { "select_all",  on_win_select_all_activate,  NULL, NULL, NULL },
-            { "treeview_add",    on_toolbutton_add_clicked,   NULL, NULL, NULL },
-            { "treeview_remove", list_remove_selection,       NULL, NULL, NULL },
-            { "treeview_clear",  list_clear,                  NULL, NULL, NULL },
+            { "treeview_add",    on_win_treeview_add_activate,   NULL, NULL, NULL },
+            { "treeview_remove", on_win_treeview_remove_activate, NULL, NULL, NULL },
+            { "treeview_clear",  on_win_treeview_clear_activate,  NULL, NULL, NULL },
             { "treeview_copy_hash", on_win_treeview_copy_hash_activate, "s", NULL, NULL },
         };
         g_action_map_add_action_entries(G_ACTION_MAP(gui.window), win_entries, G_N_ELEMENTS(win_entries), NULL);
