@@ -32,6 +32,7 @@
 #include "gui.h"
 #include "prefs.h"
 #include "check.h"
+#include "callbacks.h"
 
 #if ENABLE_NLS
 static void nls_init(void)
