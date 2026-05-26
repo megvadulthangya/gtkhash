@@ -219,7 +219,7 @@ static void gui_init_objects(GtkBuilder *builder)
     if (!GTK_IS_POPOVER_MENU(gui.menu_treeview)) {
         g_warning("menu_treeview is not a GtkPopoverMenu, creating one programmatically.");
         g_object_unref(gui.menu_treeview);
-        gui.menu_treeview = gtk_popover_menu_new();
+        gui.menu_treeview = gtk_popover_menu_new_from_model(NULL);
     }
 #else
     gui.treeselection = GTK_TREE_SELECTION(gui_get_object(builder,
