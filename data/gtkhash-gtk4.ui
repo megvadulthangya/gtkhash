@@ -19,7 +19,7 @@
       </item>
       <item>
         <attribute name="id">menuitem_quit</attribute>
-        <attribute name="label">gtk-quit</attribute>
+        <attribute name="label" translatable="yes">_Quit</attribute>
         <attribute name="action">app.quit</attribute>
         <attribute name="icon">application-exit</attribute>
       </item>
@@ -29,25 +29,25 @@
       <section>
         <item>
           <attribute name="id">menuitem_cut</attribute>
-          <attribute name="label">gtk-cut</attribute>
+          <attribute name="label" translatable="yes">_Cut</attribute>
           <attribute name="action">win.cut</attribute>
           <attribute name="icon">edit-cut</attribute>
         </item>
         <item>
           <attribute name="id">menuitem_copy</attribute>
-          <attribute name="label">gtk-copy</attribute>
+          <attribute name="label" translatable="yes">_Copy</attribute>
           <attribute name="action">win.copy</attribute>
           <attribute name="icon">edit-copy</attribute>
         </item>
         <item>
           <attribute name="id">menuitem_paste</attribute>
-          <attribute name="label">gtk-paste</attribute>
+          <attribute name="label" translatable="yes">_Paste</attribute>
           <attribute name="action">win.paste</attribute>
           <attribute name="icon">edit-paste</attribute>
         </item>
         <item>
           <attribute name="id">menuitem_delete</attribute>
-          <attribute name="label">gtk-delete</attribute>
+          <attribute name="label" translatable="yes">_Delete</attribute>
           <attribute name="action">win.delete</attribute>
           <attribute name="icon">edit-delete</attribute>
         </item>
@@ -55,7 +55,7 @@
       <section>
         <item>
           <attribute name="id">menuitem_select_all</attribute>
-          <attribute name="label">gtk-select-all</attribute>
+          <attribute name="label" translatable="yes">Select _All</attribute>
           <attribute name="action">win.select_all</attribute>
           <attribute name="icon">edit-select-all</attribute>
         </item>
@@ -63,7 +63,7 @@
       <section>
         <item>
           <attribute name="id">menuitem_prefs</attribute>
-          <attribute name="label">gtk-preferences</attribute>
+          <attribute name="label" translatable="yes">_Preferences</attribute>
           <attribute name="action">app.preferences</attribute>
           <attribute name="icon">preferences-system</attribute>
         </item>
@@ -96,7 +96,7 @@
       <attribute name="label" translatable="yes">_Help</attribute>
       <item>
         <attribute name="id">menuitem_about</attribute>
-        <attribute name="label">gtk-about</attribute>
+        <attribute name="label" translatable="yes">_About</attribute>
         <attribute name="action">app.about</attribute>
         <attribute name="icon">help-about</attribute>
       </item>
@@ -300,10 +300,13 @@
             <child>
               <object class="GtkBox" id="vbox_list">
                 <property name="orientation">vertical</property>
+                <property name="vexpand">True</property>
                 <child>
                   <object class="GtkScrolledWindow" id="scrolledwindow_list">
                     <property name="min_content_width">450</property>
                     <property name="min_content_height">150</property>
+                    <property name="hexpand">True</property>
+                    <property name="vexpand">True</property>
                     <child>
                       <object class="GtkTreeView" id="treeview">
                         <property name="search_column">2</property>
@@ -338,6 +341,7 @@
                         <child>
                           <object class="GtkTreeViewColumn" id="treeviewcolumn_file">
                             <property name="resizable">True</property>
+                            <property name="expand">True</property>
                             <property name="min_width">100</property>
                             <property name="title" translatable="yes">File</property>
                             <property name="clickable">True</property>
@@ -395,6 +399,7 @@
                       <object class="GtkProgressBar" id="progressbar">
                         <property name="show_text">True</property>
                         <property name="ellipsize">middle</property>
+                        <property name="hexpand">True</property>
                       </object>
                     </child>
                     <child>
@@ -403,22 +408,43 @@
                         <property name="halign">end</property>
                         <child>
                           <object class="GtkButton" id="button_hash">
-                            <property name="label" translatable="yes">Ha_sh</property>
                             <property name="sensitive">False</property>
-                            <property name="use_underline">True</property>
                             <child>
-                              <object class="GtkImage">
-                                <property name="icon_name">system-run</property>
+                              <object class="GtkBox">
+                                <property name="spacing">6</property>
+                                <child>
+                                  <object class="GtkImage">
+                                    <property name="icon_name">system-run</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="label" translatable="yes">_Hash</property>
+                                    <property name="use_underline">True</property>
+                                    <property name="mnemonic_widget">button_hash</property>
+                                  </object>
+                                </child>
                               </object>
                             </child>
                           </object>
                         </child>
                         <child>
                           <object class="GtkButton" id="button_stop">
-                            <property name="label">gtk-stop</property>
                             <child>
-                              <object class="GtkImage">
-                                <property name="icon_name">process-stop</property>
+                              <object class="GtkBox">
+                                <property name="spacing">6</property>
+                                <child>
+                                  <object class="GtkImage">
+                                    <property name="icon_name">process-stop</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="label" translatable="yes">_Stop</property>
+                                    <property name="use_underline">True</property>
+                                    <property name="mnemonic_widget">button_stop</property>
+                                  </object>
+                                </child>
                               </object>
                             </child>
                           </object>

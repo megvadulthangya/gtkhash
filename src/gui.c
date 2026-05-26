@@ -77,6 +77,32 @@ char *gui_filechooserbutton_get_uri(void)
 }
 #endif
 
+#if GTK_MAJOR_VERSION >= 4
+static GSettings *interface_settings = NULL;
+
+static void gui_update_color_scheme(G_GNUC_UNUSED GSettings *settings,
+    G_GNUC_UNUSED const gchar *key, G_GNUC_UNUSED gpointer user_data)
+{
+    g_autofree gchar *color_scheme = g_settings_get_string(interface_settings, "color-scheme");
+    gboolean prefer_dark = (g_strcmp0(color_scheme, "prefer-dark") == 0);
+    g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", prefer_dark, NULL);
+}
+
+static void gui_init_dark_mode(void)
+{
+    GSettingsSchema *schema = g_settings_schema_source_lookup(
+        g_settings_schema_source_get_default(),
+        "org.gnome.desktop.interface", TRUE);
+    if (schema) {
+        interface_settings = g_settings_new("org.gnome.desktop.interface");
+        g_signal_connect(interface_settings, "changed::color-scheme",
+            G_CALLBACK(gui_update_color_scheme), NULL);
+        gui_update_color_scheme(interface_settings, NULL, NULL);
+        g_settings_schema_unref(schema);
+    }
+}
+#endif
+
 static GObject *gui_get_object(GtkBuilder *builder, const char *name)
 {
     g_assert(name);
@@ -355,6 +381,10 @@ void gui_init(void)
             "gtk-icon-theme-name", "Yaru", NULL);
     }
 
+#if GTK_MAJOR_VERSION >= 4
+    gui_init_dark_mode();
+#endif
+
     resources_register_resource();
     GtkBuilder *builder = gtk_builder_new_from_resource(GUI_XML_RESOURCE);
     gui_init_objects(builder);
@@ -554,6 +584,14 @@ void gui_deinit(void)
 #else
     gtk_widget_destroy(GTK_WIDGET(gui.window));
     g_object_unref(gui.menu_treeview);
+#endif
+
+#if GTK_MAJOR_VERSION >= 4
+    if (interface_settings) {
+        g_signal_handlers_disconnect_by_data(interface_settings, NULL);
+        g_object_unref(interface_settings);
+        interface_settings = NULL;
+    }
 #endif
 
 #if GTK_CHECK_VERSION(4, 0, 0)

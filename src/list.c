@@ -114,6 +114,9 @@ void list_init(void)
         GtkTreeViewColumn *col = gtk_tree_view_get_column(gui.treeview, i);
         gtk_tree_view_column_set_resizable(col, true);
         gtk_tree_view_column_set_min_width(col, 10);
+#if GTK_MAJOR_VERSION >= 4
+        gtk_tree_view_column_set_expand(col, TRUE);
+#endif
     }
 
     gui.liststore = gtk_list_store_newv(cols, types);
