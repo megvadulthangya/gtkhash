@@ -1216,7 +1216,6 @@ void callbacks_init(void)
         if (GTK_IS_POPOVER_MENU(gui.menu_treeview)) {
             GMenuModel *treeview_menu = create_treeview_popover_model();
             gtk_popover_menu_set_menu_model(GTK_POPOVER_MENU(gui.menu_treeview), treeview_menu);
-            g_object_unref(treeview_menu);
         } else {
             g_warning("menu_treeview is not a GtkPopoverMenu, cannot set menu model");
         }

@@ -225,11 +225,8 @@ static void gui_init_objects(GtkBuilder *builder)
     gui.treeselection = gtk_tree_view_get_selection(gui.treeview);
     gui.menu_treeview = GTK_WIDGET(gui_get_object(builder,
         "menu_treeview"));
-    if (!GTK_IS_POPOVER_MENU(gui.menu_treeview)) {
-        g_warning("menu_treeview is not a GtkPopoverMenu, creating one programmatically.");
-        g_object_unref(gui.menu_treeview);
-        gui.menu_treeview = gtk_popover_menu_new_from_model(NULL);
-    }
+    if (!GTK_IS_POPOVER_MENU(gui.menu_treeview))
+        g_warning("menu_treeview is not a GtkPopoverMenu, context menu may not work");
 #else
     gui.treeselection = GTK_TREE_SELECTION(gui_get_object(builder,
         "treeselection"));
