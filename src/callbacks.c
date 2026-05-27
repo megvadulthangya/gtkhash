@@ -575,7 +575,8 @@ static void on_add_files_dialog_response(GObject *source, GAsyncResult *res, gpo
     GSList *ud_list = uri_digest_list_from_uri_list(uris);
     gui_add_ud_list(ud_list, GUI_VIEW_FILE_LIST);
     uri_digest_list_free_full(ud_list);
-    g_slist_free_full(uris, g_free);
+    /* uris strings are now owned by ud_list; only free the list nodes */
+    g_slist_free(uris);
     g_object_unref(files);
     g_object_unref(dialog);
 }
