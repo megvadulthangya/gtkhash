@@ -37,6 +37,44 @@
 #include "uri-digest.h"
 #include "hash/hash-string.h"
 
+#if GTK_MAJOR_VERSION >= 4
+/* Temporary debug instrumentation for double-free tracing */
+#undef g_free
+#define g_free(ptr) do { \
+    g_printerr("[OWNERSHIP] %s:%d: g_free(%p)\n", __func__, __LINE__, (gpointer)(ptr)); \
+    (g_free)(ptr); \
+} while(0)
+
+#undef g_object_unref
+#define g_object_unref(obj) do { \
+    GObject *_obj = (GObject*)(obj); \
+    g_printerr("[OWNERSHIP] %s:%d: g_object_unref(%p, type=%s)\n", __func__, __LINE__, (gpointer)_obj, _obj ? G_OBJECT_TYPE_NAME(_obj) : "(null)"); \
+    (g_object_unref)(_obj); \
+} while(0)
+
+#undef g_clear_object
+#define g_clear_object(pp) do { \
+    GObject **_pp = (GObject**)(pp); \
+    GObject *_obj = *_pp; \
+    if (_obj) { \
+        g_printerr("[OWNERSHIP] %s:%d: g_clear_object(%p -> %p, type=%s)\n", __func__, __LINE__, (gpointer)_pp, (gpointer)_obj, G_OBJECT_TYPE_NAME(_obj)); \
+        *_pp = NULL; \
+        g_object_unref(_obj); \
+    } \
+} while(0)
+
+#undef g_clear_pointer
+#define g_clear_pointer(pp, destroy) do { \
+    gpointer *_pp = (gpointer*)(pp); \
+    gpointer _ptr = *_pp; \
+    if (_ptr) { \
+        g_printerr("[OWNERSHIP] %s:%d: g_clear_pointer(%p -> %p, destroy=%p)\n", __func__, __LINE__, (gpointer)_pp, _ptr, (destroy)); \
+        *_pp = NULL; \
+        destroy(_ptr); \
+    } \
+} while(0)
+#endif
+
 static bool on_window_delete_event(void)
 {
 #if GTK_CHECK_VERSION(4,0,0)
