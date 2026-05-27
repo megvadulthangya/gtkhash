@@ -77,15 +77,20 @@ if build_gtkhash
         )
     endforeach
 
+    # Environment for tests: avoid GL crashes by forcing cairo renderer for GTK4.
+    # GDK_BACKEND is not forced; it is left to the test infrastructure (e.g., Xvfb).
+    test_env = []
+    if gtk_version == '4'
+        test_env += 'GSK_RENDERER=cairo'
+    endif
+
     foreach lib, functions : hash_libs
         lib_enabled = config.get('ENABLE_' + lib.to_upper()) == 1
 
         test('gtkhash-test-@0@'.format(lib),
             gtkhash_test,
             depends: test_files,
-            env: [
-                'GTKHASH_TEST_LIB=@0@'.format(lib)
-            ],
+            env: test_env + ['GTKHASH_TEST_LIB=@0@'.format(lib)],
             protocol: 'tap',
         )
     endforeach
@@ -93,6 +98,7 @@ if build_gtkhash
     test('gtkhash-test',
         gtkhash_test,
         depends: test_files,
+        env: test_env,
         protocol: 'tap',
     )
 
