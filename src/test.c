@@ -778,7 +778,14 @@ int main(int argc, char **argv)
 
 #if GTK_CHECK_VERSION(4, 0, 0)
 	GtkApplication *app = gtk_application_new("org.gtkhash.test", G_APPLICATION_FLAGS_NONE);
-	g_application_register(G_APPLICATION(app), NULL, NULL);
+	{
+		GError *error = NULL;
+		g_application_register(G_APPLICATION(app), NULL, &error);
+		if (error) {
+			g_warning("Application registration failed: %s", error->message);
+			g_clear_error(&error);
+		}
+	}
 	gui_set_application(app);
 	callbacks_init(app);
 #else
