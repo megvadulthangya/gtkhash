@@ -786,8 +786,7 @@ int main(int argc, char **argv)
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.dialog), false);
 
 #if GTK_MAJOR_VERSION >= 4
-	gtk_widget_set_visible(GTK_WIDGET(gui.window), TRUE);
-	gtk_widget_set_visible(GTK_WIDGET(gui.dialog), TRUE);
+	/* Do not realize widgets in headless GTK4 to avoid GL context creation */
 #else
 	gtk_widget_show(GTK_WIDGET(gui.window));
 	gtk_widget_show(GTK_WIDGET(gui.dialog));
