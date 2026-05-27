@@ -1206,9 +1206,9 @@ void callbacks_init(void)
         g_signal_connect(view_action, "activate", G_CALLBACK(on_win_view_mode_activate), NULL);
         g_action_map_add_action(G_ACTION_MAP(gui.window), G_ACTION(view_action));
 
-        // Stateful treeview_show_toolbar action
+        // Stateful treeview_show_toolbar action (default visible)
         GSimpleAction *toolbar_action = g_simple_action_new_stateful("treeview_show_toolbar",
-            NULL, g_variant_new_boolean(FALSE));
+            NULL, g_variant_new_boolean(TRUE));
         g_signal_connect(toolbar_action, "activate", G_CALLBACK(on_win_treeview_show_toolbar_activate), NULL);
         g_action_map_add_action(G_ACTION_MAP(gui.window), G_ACTION(toolbar_action));
 

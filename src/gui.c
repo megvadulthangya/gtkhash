@@ -169,7 +169,7 @@ static void gui_init_objects(GtkBuilder *builder)
     gui.toolbutton_add = GTK_WIDGET(gui_get_object(builder, "toolbutton_add"));
     gui.toolbutton_remove = GTK_WIDGET(gui_get_object(builder, "toolbutton_remove"));
     gui.toolbutton_clear = GTK_WIDGET(gui_get_object(builder, "toolbutton_clear"));
-    gtk_widget_set_visible(gui.toolbar, false);
+    gtk_widget_set_visible(gui.toolbar, true);
 #endif
 
     // Containers

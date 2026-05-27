@@ -163,7 +163,9 @@ void list_update(void)
     gtk_tree_view_column_set_visible(col, list_priv.show_status);
 
     gtk_widget_set_sensitive(GTK_WIDGET(gui.toolbutton_clear), list.rows);
+#if !GTK_CHECK_VERSION(4,0,0)
     gtk_widget_set_sensitive(GTK_WIDGET(gui.menuitem_treeview_clear), list.rows);
+#endif
     gtk_widget_set_sensitive(GTK_WIDGET(gui.button_hash), list.rows && enabled);
 }
 
