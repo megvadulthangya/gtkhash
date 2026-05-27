@@ -3,6 +3,9 @@
 set -e
 set -x
 
+export GDK_BACKEND=offscreen
+export GSK_RENDERER=cairo
+
 # Test with all libs enabled
 unset GTKHASH_TEST_LIB
 "$@"

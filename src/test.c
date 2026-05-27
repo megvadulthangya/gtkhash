@@ -774,6 +774,7 @@ int main(int argc, char **argv)
 
 #if GTK_CHECK_VERSION(4, 0, 0)
 	GtkApplication *app = gtk_application_new("org.gtkhash.test", G_APPLICATION_FLAGS_NONE);
+	g_application_register(G_APPLICATION(app), NULL, NULL);
 	gui_set_application(app);
 	callbacks_init(app);
 #else
@@ -784,8 +785,13 @@ int main(int argc, char **argv)
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.window), false);
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.dialog), false);
 
+#if GTK_MAJOR_VERSION >= 4
+	gtk_widget_set_visible(GTK_WIDGET(gui.window), TRUE);
+	gtk_widget_set_visible(GTK_WIDGET(gui.dialog), TRUE);
+#else
 	gtk_widget_show(GTK_WIDGET(gui.window));
 	gtk_widget_show(GTK_WIDGET(gui.dialog));
+#endif
 
 	test_init();
 

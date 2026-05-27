@@ -77,15 +77,15 @@ if build_gtkhash
         )
     endforeach
 
+    test_env = ['GDK_BACKEND=offscreen', 'GSK_RENDERER=cairo']
+
     foreach lib, functions : hash_libs
         lib_enabled = config.get('ENABLE_' + lib.to_upper()) == 1
 
         test('gtkhash-test-@0@'.format(lib),
             gtkhash_test,
             depends: test_files,
-            env: [
-                'GTKHASH_TEST_LIB=@0@'.format(lib)
-            ],
+            env: test_env + ['GTKHASH_TEST_LIB=@0@'.format(lib)],
             protocol: 'tap',
         )
     endforeach
@@ -93,6 +93,7 @@ if build_gtkhash
     test('gtkhash-test',
         gtkhash_test,
         depends: test_files,
+        env: test_env,
         protocol: 'tap',
     )
 
