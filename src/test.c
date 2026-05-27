@@ -766,6 +766,10 @@ static void test_init(void)
 
 int main(int argc, char **argv)
 {
+#if GTK_MAJOR_VERSION >= 4
+	g_setenv("GSK_RENDERER", "cairo", TRUE);
+#endif
+
 	gtk_test_init(&argc, &argv);
 
 	hash_init();
