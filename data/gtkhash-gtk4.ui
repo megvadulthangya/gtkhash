@@ -276,11 +276,15 @@
                       <object class="GtkBox" id="hbox_output">
                         <property name="spacing">6</property>
                         <property name="hexpand">True</property>
+                        <property name="vexpand">False</property>
+                        <property name="valign">start</property>
                         <child>
                           <object class="GtkBox" id="vbox_outputlabels">
                             <property name="orientation">vertical</property>
                             <property name="spacing">3</property>
                             <property name="homogeneous">True</property>
+                            <property name="vexpand">False</property>
+                            <property name="valign">start</property>
                           </object>
                         </child>
                         <child>
@@ -289,6 +293,8 @@
                             <property name="spacing">3</property>
                             <property name="homogeneous">True</property>
                             <property name="hexpand">True</property>
+                            <property name="vexpand">False</property>
+                            <property name="valign">start</property>
                             <style>
                               <class name="monospace"/>
                             </style>
@@ -300,6 +306,8 @@
                             <property name="spacing">3</property>
                             <property name="homogeneous">True</property>
                             <property name="hexpand">True</property>
+                            <property name="vexpand">False</property>
+                            <property name="valign">start</property>
                             <style>
                               <class name="monospace"/>
                             </style>
@@ -316,6 +324,30 @@
                 <property name="orientation">vertical</property>
                 <property name="hexpand">True</property>
                 <property name="vexpand">True</property>
+                <child>
+                  <object class="GtkBox" id="toolbar">
+                    <property name="spacing">6</property>
+                    <property name="halign">start</property>
+                    <child>
+                      <object class="GtkButton" id="toolbutton_add">
+                        <property name="label" translatable="yes">Add</property>
+                        <property name="tooltip-text" translatable="yes">Add files to the list</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="toolbutton_remove">
+                        <property name="label" translatable="yes">Remove</property>
+                        <property name="tooltip-text" translatable="yes">Remove selected files from the list</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="toolbutton_clear">
+                        <property name="label" translatable="yes">Clear</property>
+                        <property name="tooltip-text" translatable="yes">Clear the list</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
                 <child>
                   <object class="GtkScrolledWindow" id="scrolledwindow_list">
                     <property name="min_content_width">450</property>
@@ -417,6 +449,7 @@
                     <property name="spacing">6</property>
                     <property name="valign">center</property>
                     <property name="vexpand">False</property>
+                    <property name="hexpand">True</property>
                     <child>
                       <object class="GtkProgressBar" id="progressbar">
                         <property name="show_text">True</property>

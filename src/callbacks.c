@@ -1113,7 +1113,11 @@ void callbacks_init(void)
     CON(gui.entry_check_file,               "icon-press",          on_entry_check_icon_press);
     CON(gui.entry_check_text,               "changed",             gui_check_digests);
     CON(gui.entry_check_text,               "icon-press",          on_entry_check_icon_press);
-#if !GTK_CHECK_VERSION(4,0,0)
+#if GTK_MAJOR_VERSION >= 4
+    CON(gui.toolbutton_add,                 "clicked",             on_toolbutton_add_clicked);
+    CON(gui.toolbutton_remove,              "clicked",             list_remove_selection);
+    CON(gui.toolbutton_clear,               "clicked",             list_clear);
+#else
     CON(gui.toolbutton_add,                 "clicked",             on_toolbutton_add_clicked);
     CON(gui.toolbutton_remove,              "clicked",             list_remove_selection);
     CON(gui.toolbutton_clear,               "clicked",             list_clear);

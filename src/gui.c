@@ -163,6 +163,15 @@ static void gui_init_objects(GtkBuilder *builder)
         "toolbutton_clear"));
 #endif
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+    // Toolbar (box) and buttons
+    gui.toolbar = GTK_WIDGET(gui_get_object(builder, "toolbar"));
+    gui.toolbutton_add = GTK_WIDGET(gui_get_object(builder, "toolbutton_add"));
+    gui.toolbutton_remove = GTK_WIDGET(gui_get_object(builder, "toolbutton_remove"));
+    gui.toolbutton_clear = GTK_WIDGET(gui_get_object(builder, "toolbutton_clear"));
+    gtk_widget_set_visible(gui.toolbar, false);
+#endif
+
     // Containers
     gui.vbox_single = GTK_BOX(gui_get_object(builder,
         "vbox_single"));
@@ -288,6 +297,8 @@ static void gui_init_hash_funcs(void)
         gtk_box_append(GTK_BOX(gui.vbox_outputlabels),
             GTK_WIDGET(gui.hash_widgets[i].label_file));
         gtk_widget_set_halign(GTK_WIDGET(gui.hash_widgets[i].label_file), GTK_ALIGN_START);
+        gtk_widget_set_valign(GTK_WIDGET(gui.hash_widgets[i].label_file), GTK_ALIGN_START);
+        gtk_widget_set_vexpand(GTK_WIDGET(gui.hash_widgets[i].label_file), FALSE);
 #else
         gtk_container_add(GTK_CONTAINER(gui.vbox_outputlabels),
             GTK_WIDGET(gui.hash_widgets[i].label_file));
@@ -305,6 +316,8 @@ static void gui_init_hash_funcs(void)
 #if GTK_CHECK_VERSION(4, 0, 0)
         gtk_box_append(GTK_BOX(gui.vbox_outputlabels),
             GTK_WIDGET(gui.hash_widgets[i].label_text));
+        gtk_widget_set_valign(GTK_WIDGET(gui.hash_widgets[i].label_text), GTK_ALIGN_START);
+        gtk_widget_set_vexpand(GTK_WIDGET(gui.hash_widgets[i].label_text), FALSE);
 #else
         gtk_container_add(GTK_CONTAINER(gui.vbox_outputlabels),
             GTK_WIDGET(gui.hash_widgets[i].label_text));
@@ -314,6 +327,8 @@ static void gui_init_hash_funcs(void)
         gui.hash_widgets[i].entry_file = GTK_ENTRY(gtk_entry_new());
 #if GTK_CHECK_VERSION(4, 0, 0)
         gtk_widget_set_hexpand(GTK_WIDGET(gui.hash_widgets[i].entry_file), TRUE);
+        gtk_widget_set_valign(GTK_WIDGET(gui.hash_widgets[i].entry_file), GTK_ALIGN_START);
+        gtk_widget_set_vexpand(GTK_WIDGET(gui.hash_widgets[i].entry_file), FALSE);
         gtk_box_append(GTK_BOX(gui.vbox_digests_file),
             GTK_WIDGET(gui.hash_widgets[i].entry_file));
 #else
@@ -329,6 +344,8 @@ static void gui_init_hash_funcs(void)
         gui.hash_widgets[i].entry_text = GTK_ENTRY(gtk_entry_new());
 #if GTK_CHECK_VERSION(4, 0, 0)
         gtk_widget_set_hexpand(GTK_WIDGET(gui.hash_widgets[i].entry_text), TRUE);
+        gtk_widget_set_valign(GTK_WIDGET(gui.hash_widgets[i].entry_text), GTK_ALIGN_START);
+        gtk_widget_set_vexpand(GTK_WIDGET(gui.hash_widgets[i].entry_text), FALSE);
         gtk_box_append(GTK_BOX(gui.vbox_digests_text),
             GTK_WIDGET(gui.hash_widgets[i].entry_text));
 #else
@@ -894,6 +911,7 @@ void gui_update(void)
 #if GTK_CHECK_VERSION(4, 0, 0)
         gtk_widget_set_visible(GTK_WIDGET(gui.vbox_list), FALSE);
         gtk_widget_set_visible(GTK_WIDGET(gui.vbox_single), TRUE);
+        gtk_widget_set_visible(gui.toolbar, FALSE);
 #else
         gtk_widget_hide(GTK_WIDGET(gui.toolbar));
         gtk_widget_hide(GTK_WIDGET(gui.vbox_list));
