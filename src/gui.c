@@ -40,44 +40,6 @@
 #include "hash/digest-format.h"
 #include "hash/hash-func.h"
 
-#if GTK_MAJOR_VERSION >= 4
-/* Temporary debug instrumentation for double-free tracing */
-#undef g_free
-#define g_free(ptr) do { \
-    g_printerr("[OWNERSHIP] %s:%d: g_free(%p)\n", __func__, __LINE__, (gpointer)(ptr)); \
-    (g_free)(ptr); \
-} while(0)
-
-#undef g_object_unref
-#define g_object_unref(obj) do { \
-    GObject *_obj = (GObject*)(obj); \
-    g_printerr("[OWNERSHIP] %s:%d: g_object_unref(%p, type=%s)\n", __func__, __LINE__, (gpointer)_obj, _obj ? G_OBJECT_TYPE_NAME(_obj) : "(null)"); \
-    (g_object_unref)(_obj); \
-} while(0)
-
-#undef g_clear_object
-#define g_clear_object(pp) do { \
-    GObject **_pp = (GObject**)(pp); \
-    GObject *_obj = *_pp; \
-    if (_obj) { \
-        g_printerr("[OWNERSHIP] %s:%d: g_clear_object(%p -> %p, type=%s)\n", __func__, __LINE__, (gpointer)_pp, (gpointer)_obj, G_OBJECT_TYPE_NAME(_obj)); \
-        *_pp = NULL; \
-        g_object_unref(_obj); \
-    } \
-} while(0)
-
-#undef g_clear_pointer
-#define g_clear_pointer(pp, destroy) do { \
-    gpointer *_pp = (gpointer*)(pp); \
-    gpointer _ptr = *_pp; \
-    if (_ptr) { \
-        g_printerr("[OWNERSHIP] %s:%d: g_clear_pointer(%p -> %p, destroy=%p)\n", __func__, __LINE__, (gpointer)_pp, _ptr, (destroy)); \
-        *_pp = NULL; \
-        destroy(_ptr); \
-    } \
-} while(0)
-#endif
-
 #if GTK4
 #define GUI_XML_RESOURCE "/org/gtkhash/gtkhash-gtk4.ui"
 #else
@@ -263,8 +225,6 @@ static void gui_init_objects(GtkBuilder *builder)
     gui.treeselection = gtk_tree_view_get_selection(gui.treeview);
     gui.menu_treeview = GTK_WIDGET(gui_get_object(builder,
         "menu_treeview"));
-    if (!GTK_IS_POPOVER_MENU(gui.menu_treeview))
-        g_warning("menu_treeview is not a GtkPopoverMenu, context menu may not work");
 #else
     gui.treeselection = GTK_TREE_SELECTION(gui_get_object(builder,
         "treeselection"));
