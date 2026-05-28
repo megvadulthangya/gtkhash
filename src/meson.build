@@ -77,11 +77,12 @@ if build_gtkhash
         )
     endforeach
 
-    # Environment for tests: avoid GL crashes by forcing cairo renderer for GTK4.
-    # GDK_BACKEND is not forced; it is left to the test infrastructure (e.g., Xvfb).
+    # Environment for tests: avoid GL crashes by forcing cairo renderer
+    # and disabling GL for GTK4.
     test_env = []
     if gtk_version == '4'
         test_env += 'GSK_RENDERER=cairo'
+        test_env += 'GDK_GL=disable'
     endif
 
     foreach lib, functions : hash_libs

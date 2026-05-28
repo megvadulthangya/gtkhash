@@ -767,8 +767,11 @@ static void test_init(void)
 int main(int argc, char **argv)
 {
 #if GTK_MAJOR_VERSION >= 4
-	/* Disable GL hardware acceleration for test environment.
-	 * Do not overwrite values already set externally (e.g., Xvfb). */
+	/* Disable GL hardware acceleration and force software rendering
+	 * before any GTK/GDK initialization. This ensures the test
+	 * environment can run without a GPU or GL context.
+	 * External environment (e.g. Xvfb) can still override via
+	 * normal variable precedence. */
 	g_setenv("GSK_RENDERER", "cairo", FALSE);
 	g_setenv("GDK_GL", "disable", FALSE);
 #endif
