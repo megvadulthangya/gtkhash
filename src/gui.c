@@ -129,6 +129,19 @@ static GObject *gui_get_object(GtkBuilder *builder, const char *name)
     return obj;
 }
 
+#if GTK_MAJOR_VERSION >= 4
+static GObject *gui_get_object_optional(GtkBuilder *builder, const char *name)
+{
+    g_assert(name);
+
+    GObject *obj = gtk_builder_get_object(builder, name);
+    if (!obj)
+        g_warning("optional object not found: \"%s\"", name);
+
+    return obj;
+}
+#endif
+
 static void gui_init_objects(GtkBuilder *builder)
 {
     // Window
@@ -237,7 +250,7 @@ static void gui_init_objects(GtkBuilder *builder)
         "treeview"));
 #if GTK_CHECK_VERSION(4, 0, 0)
     gui.treeselection = gtk_tree_view_get_selection(gui.treeview);
-    gui.menu_treeview = GTK_WIDGET(gui_get_object(builder,
+    gui.menu_treeview = GTK_WIDGET(gui_get_object_optional(builder,
         "menu_treeview"));
 #else
     gui.treeselection = GTK_TREE_SELECTION(gui_get_object(builder,
