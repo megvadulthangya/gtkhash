@@ -45,8 +45,23 @@ if build_gtkhash
 
     # Test executable.
 
+    # Additional sources for test executable
+    test_extra_sources = []
+    if gtk_version == '4'
+        test_extra_sources += gnome.compile_resources('test-ui-resource',
+            files('../data/gtkhash-gtk4-test.gresource.xml'),
+            c_name: 'test_ui_resource',
+            source_dir: meson.current_source_dir() / '..' / 'data',
+            extra_args: [
+                '--internal',
+                '--manual-register',
+            ],
+        )
+    endif
+
     gtkhash_test = executable('gtkhash-test',
         gtkhash_common_sources,
+        test_extra_sources,
         'test.c',
 
         include_directories: root_include,

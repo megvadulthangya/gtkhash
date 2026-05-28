@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+	<gresource prefix="/org/gtkhash">
+		<file compressed="true" preprocess="xml-stripblanks">gtkhash-gtk4-test.ui</file>
+	</gresource>
+</gresources>

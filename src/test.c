@@ -767,7 +767,8 @@ static void test_init(void)
 int main(int argc, char **argv)
 {
 #if GTK_MAJOR_VERSION >= 4
-	/* Disable GL hardware acceleration before any GTK initialization */
+	/* Force software rendering to prevent GL context probing */
+	g_setenv("GSK_RENDERER", "cairo", TRUE);
 	g_setenv("GDK_GL", "disable", TRUE);
 #endif
 

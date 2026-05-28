@@ -40,6 +40,10 @@
 #include "hash/digest-format.h"
 #include "hash/hash-func.h"
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+#include "test-ui-resource.h"
+#endif
+
 #if GTK4
 #define GUI_XML_RESOURCE "/org/gtkhash/gtkhash-gtk4.ui"
 #else
@@ -406,11 +410,32 @@ void gui_init(void)
     gui_init_dark_mode();
 #endif
 
+    GtkBuilder *builder = NULL;
+
+#if GTK_MAJOR_VERSION >= 4
+    if (g_test_initialized()) {
+        test_ui_resource_register_resource();
+        builder = gtk_builder_new_from_resource("/org/gtkhash/gtkhash-gtk4-test.ui");
+    } else {
+        resources_register_resource();
+        builder = gtk_builder_new_from_resource(GUI_XML_RESOURCE);
+    }
+#else
     resources_register_resource();
-    GtkBuilder *builder = gtk_builder_new_from_resource(GUI_XML_RESOURCE);
+    builder = gtk_builder_new_from_resource(GUI_XML_RESOURCE);
+#endif
+
     gui_init_objects(builder);
     g_object_unref(builder);
+
+#if GTK_MAJOR_VERSION >= 4
+    if (g_test_initialized())
+        test_ui_resource_unregister_resource();
+    else
+        resources_unregister_resource();
+#else
     resources_unregister_resource();
+#endif
 
     gui_init_hash_funcs();
     list_init();
