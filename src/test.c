@@ -767,7 +767,11 @@ static void test_init(void)
 int main(int argc, char **argv)
 {
 #if GTK_MAJOR_VERSION >= 4
-	g_setenv("GDK_GL", "disable", TRUE);
+	/* Ensure a headless GTK4 environment without GL dependencies.
+	 * Do not overwrite any values already set externally (e.g., Xvfb). */
+	g_setenv("GDK_BACKEND", "surfaceless", FALSE);
+	g_setenv("GSK_RENDERER", "cairo", FALSE);
+	g_setenv("GDK_GL", "disable", FALSE);
 #endif
 
 	gtk_test_init(&argc, &argv);
