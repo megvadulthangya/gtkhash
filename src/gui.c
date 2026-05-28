@@ -86,7 +86,9 @@ static void gui_update_color_scheme(G_GNUC_UNUSED GSettings *settings,
 {
     g_autofree gchar *color_scheme = g_settings_get_string(interface_settings, "color-scheme");
     gboolean prefer_dark = (g_strcmp0(color_scheme, "prefer-dark") == 0);
-    g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", prefer_dark, NULL);
+
+    if (!g_test_initialized())
+        g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme", prefer_dark, NULL);
 }
 
 static void gui_init_dark_mode(void)
@@ -1113,9 +1115,13 @@ void gui_check_digests(void)
         const char *icon_out = NULL;
 
         if (*str_in && gtkhash_digest_format_compare(str_in, str_out, format)) {
-            // FIXME: find a real alternative for GTK_STOCK_YES
+#if GTK_MAJOR_VERSION >= 4
+            icon_out = "emblem-ok-symbolic";
+            icon_in = "emblem-ok-symbolic";
+#else
             icon_out = "gtk-yes";
             icon_in = "gtk-yes";
+#endif
         }
         gtk_entry_set_icon_from_icon_name(entry, GTK_ENTRY_ICON_SECONDARY,
             icon_out);
