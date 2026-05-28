@@ -35,6 +35,10 @@
 #include "opts.h"
 #include "hash/hash-func.h"
 
+#if GTK_MAJOR_VERSION >= 4
+#include "test-ui-resource.h"
+#endif
+
 #ifndef G_SOURCE_FUNC
 #define G_SOURCE_FUNC(f) ((GSourceFunc) (void (*)(void)) (f))
 #endif
@@ -775,6 +779,13 @@ int main(int argc, char **argv)
 	gtk_test_init(&argc, &argv);
 
 	hash_init();
+
+#if GTK_MAJOR_VERSION >= 4
+	/* Load test-specific UI resource before gui_init() */
+	test_ui_resource_register_resource();
+	gui_set_test_resource("/org/gtkhash/gtkhash-gtk4-test.ui");
+#endif
+
 	gui_init();
 	check_init();
 
@@ -812,6 +823,11 @@ int main(int argc, char **argv)
 
 	check_deinit();
 	gui_deinit();
+
+#if GTK_MAJOR_VERSION >= 4
+	test_ui_resource_unregister_resource();
+#endif
+
 	hash_deinit();
 
 #if GTK_CHECK_VERSION(4, 0, 0)

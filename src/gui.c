@@ -40,10 +40,6 @@
 #include "hash/digest-format.h"
 #include "hash/hash-func.h"
 
-#if GTK_CHECK_VERSION(4, 0, 0)
-#include "test-ui-resource.h"
-#endif
-
 #if GTK4
 #define GUI_XML_RESOURCE "/org/gtkhash/gtkhash-gtk4.ui"
 #else
@@ -107,6 +103,18 @@ static void gui_init_dark_mode(void)
         gui_update_color_scheme(interface_settings, NULL, NULL);
         g_settings_schema_unref(schema);
     }
+}
+#endif
+
+#if GTK_MAJOR_VERSION >= 4
+static gboolean test_mode = FALSE;
+static char *test_resource_path = NULL;
+
+void gui_set_test_resource(const char *resource_path)
+{
+    test_mode = TRUE;
+    g_free(test_resource_path);
+    test_resource_path = g_strdup(resource_path);
 }
 #endif
 
@@ -413,9 +421,8 @@ void gui_init(void)
     GtkBuilder *builder = NULL;
 
 #if GTK_MAJOR_VERSION >= 4
-    if (g_test_initialized()) {
-        test_ui_resource_register_resource();
-        builder = gtk_builder_new_from_resource("/org/gtkhash/gtkhash-gtk4-test.ui");
+    if (test_mode) {
+        builder = gtk_builder_new_from_resource(test_resource_path);
     } else {
         resources_register_resource();
         builder = gtk_builder_new_from_resource(GUI_XML_RESOURCE);
@@ -429,9 +436,7 @@ void gui_init(void)
     g_object_unref(builder);
 
 #if GTK_MAJOR_VERSION >= 4
-    if (g_test_initialized())
-        test_ui_resource_unregister_resource();
-    else
+    if (!test_mode)
         resources_unregister_resource();
 #else
     resources_unregister_resource();

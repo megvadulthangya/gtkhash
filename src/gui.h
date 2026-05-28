@@ -150,4 +150,8 @@ char *gui_filechooserbutton_get_uri(void);
 extern GFile *gui_filechooser_selected_file;
 #endif
 
+#if GTK_MAJOR_VERSION >= 4
+void gui_set_test_resource(const char *resource_path);
+#endif
+
 #endif
