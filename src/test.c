@@ -769,11 +769,24 @@ int main(int argc, char **argv)
 #if GTK_MAJOR_VERSION >= 4
 	/* Disable GL hardware acceleration and force software rendering
 	 * before any GTK/GDK initialization. This ensures the test
-	 * environment can run without a GPU or GL context.
-	 * External environment (e.g. Xvfb) can still override via
-	 * normal variable precedence. */
+	 * environment can run without a GPU or GL context. */
 	g_setenv("GSK_RENDERER", "cairo", FALSE);
 	g_setenv("GDK_GL", "disable", FALSE);
+
+	/* Pre-open the default display and clear any potential GError
+	 * to prevent the "GError set over the top" fatal warning
+	 * during subsequent GTK initialization. */
+	{
+		GError *error = NULL;
+		GdkDisplay *display = gdk_display_open(NULL, &error);
+		if (display) {
+			gdk_display_manager_set_default_display(
+				gdk_display_manager_get(), display);
+		}
+		if (error) {
+			g_clear_error(&error);
+		}
+	}
 #endif
 
 	gtk_test_init(&argc, &argv);
