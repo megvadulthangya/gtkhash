@@ -118,13 +118,13 @@ void gui_set_test_resource(const char *resource_path)
 }
 #endif
 
-static GObject *gui_get_object(GtkBuilder *builder, const char *name)
+static GObject *gui_get_object_required(GtkBuilder *builder, const char *name)
 {
     g_assert(name);
 
     GObject *obj = gtk_builder_get_object(builder, name);
     if (!obj)
-        g_error("unknown object: \"%s\"", name);
+        g_error("required object not found: \"%s\"", name);
 
     return obj;
 }
@@ -145,157 +145,157 @@ static GObject *gui_get_object_optional(GtkBuilder *builder, const char *name)
 static void gui_init_objects(GtkBuilder *builder)
 {
     // Window
-    gui.window = GTK_WINDOW(gui_get_object(builder,
+    gui.window = GTK_WINDOW(gui_get_object_required(builder,
         "window"));
 
 #if !GTK_CHECK_VERSION(4, 0, 0)
     // Menus
-    gui.menuitem_open = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_open = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_open"));
-    gui.menuitem_save_as = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_save_as = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_save_as"));
-    gui.menuitem_quit = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_quit = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_quit"));
-    gui.menuitem_edit = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_edit = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_edit"));
-    gui.menuitem_cut = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_cut = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_cut"));
-    gui.menuitem_copy = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_copy = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_copy"));
-    gui.menuitem_paste = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_paste = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_paste"));
-    gui.menuitem_delete = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_delete = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_delete"));
-    gui.menuitem_select_all = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_select_all = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_select_all"));
-    gui.menuitem_prefs = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_prefs = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_prefs"));
-    gui.menuitem_about = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_about = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_about"));
-    gui.radiomenuitem_file = GTK_RADIO_MENU_ITEM(gui_get_object(builder,
+    gui.radiomenuitem_file = GTK_RADIO_MENU_ITEM(gui_get_object_required(builder,
         "radiomenuitem_file"));
-    gui.radiomenuitem_text = GTK_RADIO_MENU_ITEM(gui_get_object(builder,
+    gui.radiomenuitem_text = GTK_RADIO_MENU_ITEM(gui_get_object_required(builder,
         "radiomenuitem_text"));
-    gui.radiomenuitem_file_list = GTK_RADIO_MENU_ITEM(gui_get_object(builder,
+    gui.radiomenuitem_file_list = GTK_RADIO_MENU_ITEM(gui_get_object_required(builder,
         "radiomenuitem_file_list"));
 
     // Toolbar
-    gui.toolbar = GTK_TOOLBAR(gui_get_object(builder,
+    gui.toolbar = GTK_TOOLBAR(gui_get_object_required(builder,
         "toolbar"));
-    gui.toolbutton_add = GTK_TOOL_BUTTON(gui_get_object(builder,
+    gui.toolbutton_add = GTK_TOOL_BUTTON(gui_get_object_required(builder,
         "toolbutton_add"));
-    gui.toolbutton_remove = GTK_TOOL_BUTTON(gui_get_object(builder,
+    gui.toolbutton_remove = GTK_TOOL_BUTTON(gui_get_object_required(builder,
         "toolbutton_remove"));
-    gui.toolbutton_clear = GTK_TOOL_BUTTON(gui_get_object(builder,
+    gui.toolbutton_clear = GTK_TOOL_BUTTON(gui_get_object_required(builder,
         "toolbutton_clear"));
 #endif
 
 #if GTK_CHECK_VERSION(4, 0, 0)
     // Toolbar (box) and buttons
-    gui.toolbar = GTK_WIDGET(gui_get_object(builder, "toolbar"));
-    gui.toolbutton_add = GTK_WIDGET(gui_get_object(builder, "toolbutton_add"));
-    gui.toolbutton_remove = GTK_WIDGET(gui_get_object(builder, "toolbutton_remove"));
-    gui.toolbutton_clear = GTK_WIDGET(gui_get_object(builder, "toolbutton_clear"));
+    gui.toolbar = GTK_WIDGET(gui_get_object_required(builder, "toolbar"));
+    gui.toolbutton_add = GTK_WIDGET(gui_get_object_required(builder, "toolbutton_add"));
+    gui.toolbutton_remove = GTK_WIDGET(gui_get_object_required(builder, "toolbutton_remove"));
+    gui.toolbutton_clear = GTK_WIDGET(gui_get_object_required(builder, "toolbutton_clear"));
     gtk_widget_set_visible(gui.toolbar, true);
 #endif
 
     // Containers
-    gui.vbox_single = GTK_BOX(gui_get_object(builder,
+    gui.vbox_single = GTK_BOX(gui_get_object_required(builder,
         "vbox_single"));
-    gui.vbox_list = GTK_BOX(gui_get_object(builder,
+    gui.vbox_list = GTK_BOX(gui_get_object_required(builder,
         "vbox_list"));
-    gui.hbox_input = GTK_BOX(gui_get_object(builder,
+    gui.hbox_input = GTK_BOX(gui_get_object_required(builder,
         "hbox_input"));
-    gui.hbox_output = GTK_BOX(gui_get_object(builder,
+    gui.hbox_output = GTK_BOX(gui_get_object_required(builder,
         "hbox_output"));
-    gui.vbox_outputlabels = GTK_BOX(gui_get_object(builder,
+    gui.vbox_outputlabels = GTK_BOX(gui_get_object_required(builder,
         "vbox_outputlabels"));
-    gui.vbox_digests_file = GTK_BOX(gui_get_object(builder,
+    gui.vbox_digests_file = GTK_BOX(gui_get_object_required(builder,
         "vbox_digests_file"));
-    gui.vbox_digests_text = GTK_BOX(gui_get_object(builder,
+    gui.vbox_digests_text = GTK_BOX(gui_get_object_required(builder,
         "vbox_digests_text"));
 
     // Inputs
 #if GTK_CHECK_VERSION(4, 0, 0)
-    gui.filechooserbutton = GTK_WIDGET(gui_get_object(builder,
+    gui.filechooserbutton = GTK_WIDGET(gui_get_object_required(builder,
         "filechooserbutton"));
     gtk_button_set_label(GTK_BUTTON(gui.filechooserbutton), _("Choose a file..."));
 #else
-    gui.filechooserbutton = GTK_FILE_CHOOSER_BUTTON(gui_get_object(builder,
+    gui.filechooserbutton = GTK_FILE_CHOOSER_BUTTON(gui_get_object_required(builder,
         "filechooserbutton"));
 #endif
-    gui.entry_text = GTK_ENTRY(gui_get_object(builder,
+    gui.entry_text = GTK_ENTRY(gui_get_object_required(builder,
         "entry_text"));
-    gui.entry_check_file = GTK_ENTRY(gui_get_object(builder,
+    gui.entry_check_file = GTK_ENTRY(gui_get_object_required(builder,
         "entry_check_file"));
-    gui.entry_check_text = GTK_ENTRY(gui_get_object(builder,
+    gui.entry_check_text = GTK_ENTRY(gui_get_object_required(builder,
         "entry_check_text"));
-    gui.togglebutton_hmac_file = GTK_TOGGLE_BUTTON(gui_get_object(builder,
+    gui.togglebutton_hmac_file = GTK_TOGGLE_BUTTON(gui_get_object_required(builder,
         "togglebutton_hmac_file"));
-    gui.togglebutton_hmac_text = GTK_TOGGLE_BUTTON(gui_get_object(builder,
+    gui.togglebutton_hmac_text = GTK_TOGGLE_BUTTON(gui_get_object_required(builder,
         "togglebutton_hmac_text"));
-    gui.entry_hmac_file = GTK_ENTRY(gui_get_object(builder,
+    gui.entry_hmac_file = GTK_ENTRY(gui_get_object_required(builder,
         "entry_hmac_file"));
-    gui.entry_hmac_text = GTK_ENTRY(gui_get_object(builder,
+    gui.entry_hmac_text = GTK_ENTRY(gui_get_object_required(builder,
         "entry_hmac_text"));
 
     // Labels
-    gui.label_file = GTK_LABEL(gui_get_object(builder,
+    gui.label_file = GTK_LABEL(gui_get_object_required(builder,
         "label_file"));
-    gui.label_text = GTK_LABEL(gui_get_object(builder,
+    gui.label_text = GTK_LABEL(gui_get_object_required(builder,
         "label_text"));
 
     // Tree View
-    gui.treeview = GTK_TREE_VIEW(gui_get_object(builder,
+    gui.treeview = GTK_TREE_VIEW(gui_get_object_required(builder,
         "treeview"));
 #if GTK_CHECK_VERSION(4, 0, 0)
     gui.treeselection = gtk_tree_view_get_selection(gui.treeview);
     gui.menu_treeview = GTK_WIDGET(gui_get_object_optional(builder,
         "menu_treeview"));
 #else
-    gui.treeselection = GTK_TREE_SELECTION(gui_get_object(builder,
+    gui.treeselection = GTK_TREE_SELECTION(gui_get_object_required(builder,
         "treeselection"));
 #endif
 #if !GTK_CHECK_VERSION(4, 0, 0)
-    gui.menu_treeview = GTK_MENU(gui_get_object(builder,
+    gui.menu_treeview = GTK_MENU(gui_get_object_required(builder,
         "menu_treeview"));
     g_object_ref(gui.menu_treeview);
-    gui.menuitem_treeview_add = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_treeview_add = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_treeview_add"));
-    gui.menuitem_treeview_remove = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_treeview_remove = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_treeview_remove"));
-    gui.menuitem_treeview_clear = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_treeview_clear = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_treeview_clear"));
-    gui.menu_treeview_copy = GTK_MENU(gui_get_object(builder,
+    gui.menu_treeview_copy = GTK_MENU(gui_get_object_required(builder,
         "menu_treeview_copy"));
-    gui.menuitem_treeview_copy = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_treeview_copy = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_treeview_copy"));
-    gui.menuitem_treeview_show_toolbar = GTK_MENU_ITEM(gui_get_object(builder,
+    gui.menuitem_treeview_show_toolbar = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_treeview_show_toolbar"));
 #endif
 
     // Buttons
-    gui.hseparator_buttons = GTK_SEPARATOR(gui_get_object(builder,
+    gui.hseparator_buttons = GTK_SEPARATOR(gui_get_object_required(builder,
         "hseparator_buttons"));
-    gui.button_hash = GTK_BUTTON(gui_get_object(builder,
+    gui.button_hash = GTK_BUTTON(gui_get_object_required(builder,
         "button_hash"));
-    gui.button_stop = GTK_BUTTON(gui_get_object(builder,
+    gui.button_stop = GTK_BUTTON(gui_get_object_required(builder,
         "button_stop"));
 
     // Progress Bar
-    gui.progressbar = GTK_PROGRESS_BAR(gui_get_object(builder,
+    gui.progressbar = GTK_PROGRESS_BAR(gui_get_object_required(builder,
         "progressbar"));
 
     // Dialog
-    gui.dialog = GTK_DIALOG(gui_get_object(builder,
+    gui.dialog = GTK_DIALOG(gui_get_object_required(builder,
         "dialog"));
-    gui.dialog_grid = GTK_GRID(gui_get_object(builder,
+    gui.dialog_grid = GTK_GRID(gui_get_object_required(builder,
         "dialog_grid"));
-    gui.dialog_togglebutton_show_hmac = GTK_WIDGET(gui_get_object(builder,
+    gui.dialog_togglebutton_show_hmac = GTK_WIDGET(gui_get_object_required(builder,
         "dialog_togglebutton_show_hmac"));
-    gui.dialog_combobox = GTK_COMBO_BOX(gui_get_object(builder,
+    gui.dialog_combobox = GTK_COMBO_BOX(gui_get_object_required(builder,
         "dialog_combobox"));
-    gui.dialog_button_close = GTK_BUTTON(gui_get_object(builder,
+    gui.dialog_button_close = GTK_BUTTON(gui_get_object_required(builder,
         "dialog_button_close"));
 }
 
