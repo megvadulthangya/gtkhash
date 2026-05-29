@@ -27,7 +27,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/wait.h>
 #include <gtk/gtk.h>
 
 #include "callbacks.h"
@@ -437,40 +436,40 @@ static void run_test_binary(const char *test_name,
 	g_ptr_array_add(argv, NULL);
 	gchar **argv_final = (gchar **)argv->pdata;
 
-	gint exit_status;
-	g_autofree gchar *stdout_str = NULL;
-	g_autofree gchar *stderr_str = NULL;
 	GError *error = NULL;
-
-	gboolean success = g_spawn_sync(NULL, argv_final, NULL,
-	                                G_SPAWN_SEARCH_PATH,
-	                                NULL, NULL,
-	                                &stdout_str, &stderr_str,
-	                                &exit_status, &error);
-
-	for (guint i = 0; i < argv->len - 1; i++)
-		g_free(g_ptr_array_index(argv, i));
-	g_ptr_array_free(argv, TRUE);
-
-	if (!success)
-		g_error("Failed to spawn test subprocess: %s", error->message);
-
-	if (exit_status != expected_exit_status) {
-		if (WIFEXITED(exit_status))
-			g_test_message("Subprocess '%s' exited with code %d (expected %d)",
-			               test_name, WEXITSTATUS(exit_status), expected_exit_status);
-		else if (WIFSIGNALED(exit_status))
-			g_test_message("Subprocess '%s' terminated by signal %d (%s) (expected exit %d)",
-			               test_name, WTERMSIG(exit_status),
-			               g_strsignal(WTERMSIG(exit_status)), expected_exit_status);
-		else
-			g_test_message("Subprocess '%s' exited with raw status %d (expected %d)",
-			               test_name, exit_status, expected_exit_status);
-
-		g_test_message("stdout: %s", stdout_str ? stdout_str : "(null)");
-		g_test_message("stderr: %s", stderr_str ? stderr_str : "(null)");
+	GSubprocess *sub = g_subprocess_newv((const gchar * const *)argv_final,
+	                                     G_SUBPROCESS_FLAGS_STDOUT_PIPE |
+	                                     G_SUBPROCESS_FLAGS_STDERR_PIPE,
+	                                     &error);
+	if (!sub) {
+		g_error("Failed to spawn subprocess '%s': %s", test_name, error->message);
 	}
-	g_assert_cmpint(exit_status, ==, expected_exit_status);
+
+	g_autoptr(GBytes) stdout_bytes = NULL;
+	g_autoptr(GBytes) stderr_bytes = NULL;
+	if (!g_subprocess_communicate(sub, NULL, NULL, &stdout_bytes, &stderr_bytes, &error)) {
+		g_error("Failed to communicate with subprocess '%s': %s", test_name, error->message);
+	}
+
+	g_autofree gchar *stdout_str = g_strndup(g_bytes_get_data(stdout_bytes, NULL),
+	                                         g_bytes_get_size(stdout_bytes));
+	g_autofree gchar *stderr_str = g_strndup(g_bytes_get_data(stderr_bytes, NULL),
+	                                         g_bytes_get_size(stderr_bytes));
+
+	if (!g_subprocess_get_if_exited(sub)) {
+		int sig = g_subprocess_get_term_sig(sub);
+		g_test_message("Subprocess '%s' terminated by signal %d (%s)",
+		               test_name, sig, g_strsignal(sig));
+		g_assert_not_reached();
+	}
+	int exit_code = g_subprocess_get_exit_status(sub);
+	if (exit_code != expected_exit_status) {
+		g_test_message("Subprocess '%s' exited with code %d, expected %d",
+		               test_name, exit_code, expected_exit_status);
+		g_test_message("stdout: %s", stdout_str);
+		g_test_message("stderr: %s", stderr_str);
+	}
+	g_assert_cmpint(exit_code, ==, expected_exit_status);
 
 	if (expected_stdout_pat) {
 		g_assert_nonnull(stdout_str);
@@ -480,6 +479,10 @@ static void run_test_binary(const char *test_name,
 		g_assert_nonnull(stderr_str);
 		g_assert_true(g_pattern_match_simple(expected_stderr_pat, stderr_str));
 	}
+
+	for (guint i = 0; i < argv->len - 1; i++)
+		g_free(g_ptr_array_index(argv, i));
+	g_ptr_array_free(argv, TRUE);
 }
 
 #endif /* GTK_MAJOR_VERSION >= 4 */
@@ -744,7 +747,7 @@ static void test_digest_format_hex_upper_subproc(void)
 /* for GTK4).                                                                 */
 /* -------------------------------------------------------------------------- */
 
-#if GTK_MAJOR_VERSION < 4
+#if GTK_MAJOR_VERSION < 4 && defined(G_OS_UNIX)
 
 static void test_opt_help(void)
 {
@@ -994,68 +997,6 @@ static void test_opt_file_list(void)
 	g_test_trap_assert_stdout("*d41d8cd98f00b204e9800998ecf8427e*");
 }
 
-#else  /* GTK_MAJOR_VERSION >= 4 – exec‑based tests */
-
-static void test_opt_help_gtk4(void)
-{
-	run_test_binary("help", "t --help", EXIT_SUCCESS, "*--help*", NULL);
-}
-
-static void test_opt_version_gtk4(void)
-{
-	run_test_binary("version", "t --version", EXIT_SUCCESS, PACKAGE_STRING "*", NULL);
-}
-
-static void test_opt_check_text_gtk4(void)
-{
-	run_test_binary("check-text", "-c fail -t aa --check 0123abcdef",
-	                EXIT_SUCCESS, "0123abcdef*", NULL);
-}
-
-static void test_opt_check_file_gtk4(void)
-{
-	run_test_binary("check-file", NULL, EXIT_SUCCESS, NULL, "*notfound.bytes*");
-}
-
-static void test_opt_function_gtk4(void)
-{
-	run_test_binary("function", NULL, EXIT_SUCCESS, NULL, "*Unknown*XX*");
-}
-
-static void test_opt_file_gtk4(void)
-{
-	run_test_binary("file", NULL, EXIT_SUCCESS,
-	                "*f1c9645dbc14efddc7d8a322685f26eb*"
-	                "*f1c9645dbc14efddc7d8a322685f26eb*"
-	                "*f1c9645dbc14efddc7d8a322685f26eb*", NULL);
-}
-
-static void test_opt_file_list_gtk4(void)
-{
-	run_test_binary("file-list", NULL, EXIT_SUCCESS,
-	                "*d41d8cd98f00b204e9800998ecf8427e*", NULL);
-}
-
-static void test_digest_format_base64_gtk4(void)
-{
-	run_test_binary("digest-base64", NULL, EXIT_SUCCESS,
-	                "*1B2M2Y8AsgTpgAmY7PhCfg==*", NULL);
-}
-
-static void test_digest_format_hex_lower_gtk4(void)
-{
-	run_test_binary("digest-hex-lower", NULL, EXIT_SUCCESS,
-	                "*d41d8cd98f00b204e9800998ecf8427e*", NULL);
-}
-
-static void test_digest_format_hex_upper_gtk4(void)
-{
-	run_test_binary("digest-hex-upper", NULL, EXIT_SUCCESS,
-	                "*D41D8CD98F00B204E9800998ECF8427E*", NULL);
-}
-
-#endif /* GTK_MAJOR_VERSION < 4 */
-
 static void test_digest_format_hex_lower()
 {
 	if (g_test_subprocess()) {
@@ -1116,6 +1057,68 @@ static void test_digest_format_base64()
 	g_test_trap_assert_stdout("*1B2M2Y8AsgTpgAmY7PhCfg==*");
 }
 
+#else  /* GTK_MAJOR_VERSION >= 4 – exec‑based tests */
+
+static void test_opt_help_gtk4(void)
+{
+	run_test_binary("help", "t --help", EXIT_SUCCESS, "*--help*", NULL);
+}
+
+static void test_opt_version_gtk4(void)
+{
+	run_test_binary("version", "t --version", EXIT_SUCCESS, PACKAGE_STRING "*", NULL);
+}
+
+static void test_opt_check_text_gtk4(void)
+{
+	run_test_binary("check-text", "-c fail -t aa --check 0123abcdef",
+	                EXIT_SUCCESS, "0123abcdef*", NULL);
+}
+
+static void test_opt_check_file_gtk4(void)
+{
+	run_test_binary("check-file", NULL, EXIT_SUCCESS, NULL, "*notfound.bytes*");
+}
+
+static void test_opt_function_gtk4(void)
+{
+	run_test_binary("function", NULL, EXIT_SUCCESS, NULL, "*Unknown*XX*");
+}
+
+static void test_opt_file_gtk4(void)
+{
+	run_test_binary("file", NULL, EXIT_SUCCESS,
+	                "*f1c9645dbc14efddc7d8a322685f26eb*"
+	                "*f1c9645dbc14efddc7d8a322685f26eb*"
+	                "*f1c9645dbc14efddc7d8a322685f26eb*", NULL);
+}
+
+static void test_opt_file_list_gtk4(void)
+{
+	run_test_binary("file-list", NULL, EXIT_SUCCESS,
+	                "*d41d8cd98f00b204e9800998ecf8427e*", NULL);
+}
+
+static void test_digest_format_base64_gtk4(void)
+{
+	run_test_binary("digest-base64", NULL, EXIT_SUCCESS,
+	                "*1B2M2Y8AsgTpgAmY7PhCfg==*", NULL);
+}
+
+static void test_digest_format_hex_lower_gtk4(void)
+{
+	run_test_binary("digest-hex-lower", NULL, EXIT_SUCCESS,
+	                "*d41d8cd98f00b204e9800998ecf8427e*", NULL);
+}
+
+static void test_digest_format_hex_upper_gtk4(void)
+{
+	run_test_binary("digest-hex-upper", NULL, EXIT_SUCCESS,
+	                "*D41D8CD98F00B204E9800998ECF8427E*", NULL);
+}
+
+#endif /* GTK_MAJOR_VERSION < 4 && defined(G_OS_UNIX) */
+
 static void test_init(void)
 {
 	select_gui_view(GUI_VIEW_TEXT);
@@ -1151,13 +1154,15 @@ static void test_init(void)
 
 	/* Test cmdline options */
 #if GTK_MAJOR_VERSION < 4
-	g_test_add_func("/opt/help", test_opt_help);
-	g_test_add_func("/opt/version", test_opt_version);
-	g_test_add_func("/opt/check/text", test_opt_check_text);
-	g_test_add_func("/opt/check/file", test_opt_check_file);
-	g_test_add_func("/opt/function", test_opt_function);
-	g_test_add_func("/opt/file", test_opt_file);
-	g_test_add_func("/opt/file-list", test_opt_file_list);
+	#ifdef G_OS_UNIX
+		g_test_add_func("/opt/help", test_opt_help);
+		g_test_add_func("/opt/version", test_opt_version);
+		g_test_add_func("/opt/check/text", test_opt_check_text);
+		g_test_add_func("/opt/check/file", test_opt_check_file);
+		g_test_add_func("/opt/function", test_opt_function);
+		g_test_add_func("/opt/file", test_opt_file);
+		g_test_add_func("/opt/file-list", test_opt_file_list);
+	#endif
 #else
 	g_test_add_func("/opt/help", test_opt_help_gtk4);
 	g_test_add_func("/opt/version", test_opt_version_gtk4);
@@ -1170,9 +1175,11 @@ static void test_init(void)
 
 	/* Test digest formats */
 #if GTK_MAJOR_VERSION < 4
-	g_test_add_func("/digest-format/base64", test_digest_format_base64);
-	g_test_add_func("/digest-format/hex-lower", test_digest_format_hex_lower);
-	g_test_add_func("/digest-format/hex-upper", test_digest_format_hex_upper);
+	#ifdef G_OS_UNIX
+		g_test_add_func("/digest-format/base64", test_digest_format_base64);
+		g_test_add_func("/digest-format/hex-lower", test_digest_format_hex_lower);
+		g_test_add_func("/digest-format/hex-upper", test_digest_format_hex_upper);
+	#endif
 #else
 	g_test_add_func("/digest-format/base64", test_digest_format_base64_gtk4);
 	g_test_add_func("/digest-format/hex-lower", test_digest_format_hex_lower_gtk4);
