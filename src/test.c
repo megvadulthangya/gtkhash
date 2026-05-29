@@ -454,6 +454,12 @@ static void run_test_binary(const char *test_name,
 	if (!success)
 		g_error("Failed to spawn test subprocess: %s", error->message);
 
+	if (exit_status != expected_exit_status) {
+		g_test_message("Subprocess '%s' exited with status %d (signal %d), expected %d",
+		               test_name, exit_status,
+		               (exit_status >= 128 ? exit_status - 128 : -1),
+		               expected_exit_status);
+	}
 	g_assert_cmpint(exit_status, ==, expected_exit_status);
 
 	if (expected_stdout_pat) {
@@ -674,6 +680,52 @@ static void test_opt_file_list_subproc(void)
 	delay();
 	g_assert(list.rows == 0);
 
+	exit(EXIT_SUCCESS);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Digest format subprocess helpers – used by the new exec‑based runner        */
+/* -------------------------------------------------------------------------- */
+
+static void test_digest_format_base64_subproc(void)
+{
+	select_gui_view(GUI_VIEW_TEXT);
+	select_hash_func(HASH_FUNC_MD5, true);
+	select_digest_format(DIGEST_FORMAT_BASE64);
+
+#if GTK_MAJOR_VERSION >= 4
+	puts(gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
+#else
+	puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
+#endif
+	exit(EXIT_SUCCESS);
+}
+
+static void test_digest_format_hex_lower_subproc(void)
+{
+	select_gui_view(GUI_VIEW_TEXT);
+	select_hash_func(HASH_FUNC_MD5, true);
+	select_digest_format(DIGEST_FORMAT_HEX_LOWER);
+
+#if GTK_MAJOR_VERSION >= 4
+	puts(gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
+#else
+	puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
+#endif
+	exit(EXIT_SUCCESS);
+}
+
+static void test_digest_format_hex_upper_subproc(void)
+{
+	select_gui_view(GUI_VIEW_TEXT);
+	select_hash_func(HASH_FUNC_MD5, true);
+	select_digest_format(DIGEST_FORMAT_HEX_UPPER);
+
+#if GTK_MAJOR_VERSION >= 4
+	puts(gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
+#else
+	puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
+#endif
 	exit(EXIT_SUCCESS);
 }
 
@@ -974,6 +1026,24 @@ static void test_opt_file_list_gtk4(void)
 	                "*d41d8cd98f00b204e9800998ecf8427e*", NULL);
 }
 
+static void test_digest_format_base64_gtk4(void)
+{
+	run_test_binary("digest-base64", NULL, EXIT_SUCCESS,
+	                "*1B2M2Y8AsgTpgAmY7PhCfg==*", NULL);
+}
+
+static void test_digest_format_hex_lower_gtk4(void)
+{
+	run_test_binary("digest-hex-lower", NULL, EXIT_SUCCESS,
+	                "*d41d8cd98f00b204e9800998ecf8427e*", NULL);
+}
+
+static void test_digest_format_hex_upper_gtk4(void)
+{
+	run_test_binary("digest-hex-upper", NULL, EXIT_SUCCESS,
+	                "*D41D8CD98F00B204E9800998ECF8427E*", NULL);
+}
+
 #endif /* GTK_MAJOR_VERSION < 4 */
 
 static void test_digest_format_hex_lower()
@@ -1089,9 +1159,15 @@ static void test_init(void)
 #endif
 
 	/* Test digest formats */
+#if GTK_MAJOR_VERSION < 4
 	g_test_add_func("/digest-format/base64", test_digest_format_base64);
 	g_test_add_func("/digest-format/hex-lower", test_digest_format_hex_lower);
 	g_test_add_func("/digest-format/hex-upper", test_digest_format_hex_upper);
+#else
+	g_test_add_func("/digest-format/base64", test_digest_format_base64_gtk4);
+	g_test_add_func("/digest-format/hex-lower", test_digest_format_hex_lower_gtk4);
+	g_test_add_func("/digest-format/hex-upper", test_digest_format_hex_upper_gtk4);
+#endif
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1108,6 +1184,12 @@ static void run_subprocess_test(const char *name)
 		test_opt_file_subproc();
 	else if (g_strcmp0(name, "file-list") == 0)
 		test_opt_file_list_subproc();
+	else if (g_strcmp0(name, "digest-base64") == 0)
+		test_digest_format_base64_subproc();
+	else if (g_strcmp0(name, "digest-hex-lower") == 0)
+		test_digest_format_hex_lower_subproc();
+	else if (g_strcmp0(name, "digest-hex-upper") == 0)
+		test_digest_format_hex_upper_subproc();
 	else
 		g_error("Unknown test subprocess: %s", name);
 
