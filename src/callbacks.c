@@ -37,6 +37,15 @@
 #include "uri-digest.h"
 #include "hash/hash-string.h"
 
+/* Forward declarations of static functions called by GTK4 wrappers */
+#if GTK_CHECK_VERSION(4,0,0)
+static void on_toolbutton_add_clicked(void);
+static void on_togglebutton_hmac_file_toggled(void);
+static void on_togglebutton_hmac_text_toggled(void);
+static void on_treeselection_changed(void);
+static void on_dialog_combobox_changed(void);
+#endif
+
 #if GTK_CHECK_VERSION(4,0,0)
 /* GTK4 signal handler wrappers to match strict callback signatures */
 
