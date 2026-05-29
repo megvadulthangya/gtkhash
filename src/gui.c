@@ -136,7 +136,7 @@ static GObject *gui_get_object_optional(GtkBuilder *builder, const char *name)
 
     GObject *obj = gtk_builder_get_object(builder, name);
     if (!obj)
-        g_warning("optional object not found: \"%s\"", name);
+        g_printerr("optional object not found: \"%s\"\n", name);
 
     return obj;
 }
