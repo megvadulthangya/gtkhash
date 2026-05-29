@@ -1202,6 +1202,13 @@ void gui_set_state(const enum gui_state_e state)
 #endif
     gtk_widget_set_sensitive(GTK_WIDGET(gui.treeview), !busy);
 
+#if GTK_MAJOR_VERSION >= 4
+    if (gui.menu_treeview != NULL)
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.menu_treeview), !busy);
+#else
+    gtk_widget_set_sensitive(GTK_WIDGET(gui.menu_treeview), !busy);
+#endif
+
 #if !GTK_CHECK_VERSION(4, 0, 0)
     gtk_widget_set_sensitive(GTK_WIDGET(gui.menuitem_open), !busy);
     gtk_widget_set_sensitive(GTK_WIDGET(gui.radiomenuitem_text), !busy);
