@@ -564,6 +564,7 @@ static void test_opt_function_subproc(void)
 	gint argc;
 	char **argv;
 	g_shell_parse_argv(str, &argc, &argv, NULL);
+
 	opts_preinit(&argc, &argv);
 
 	if (hash.funcs[id].enabled)
@@ -1098,16 +1099,11 @@ static void test_init(void)
 /* -------------------------------------------------------------------------- */
 static void run_subprocess_test(const char *name)
 {
-	if (g_strcmp0(name, "help") == 0)
-		test_opt_help_subproc();
-	else if (g_strcmp0(name, "version") == 0)
-		test_opt_version_subproc();
-	else if (g_strcmp0(name, "check-text") == 0)
+	/* Only GUI‑requiring tests end up here */
+	if (g_strcmp0(name, "check-text") == 0)
 		test_opt_check_text_subproc();
 	else if (g_strcmp0(name, "check-file") == 0)
 		test_opt_check_file_subproc();
-	else if (g_strcmp0(name, "function") == 0)
-		test_opt_function_subproc();
 	else if (g_strcmp0(name, "file") == 0)
 		test_opt_file_subproc();
 	else if (g_strcmp0(name, "file-list") == 0)
@@ -1146,6 +1142,51 @@ int main(int argc, char **argv)
 		}
 	}
 
+	/* Handle subprocess tests that require no GUI at all */
+	if (subprocess_mode) {
+		if (g_strcmp0(subprocess_test_name, "help") == 0) {
+			gint new_argc;
+			char **new_argv;
+			g_shell_parse_argv("t --help", &new_argc, &new_argv, NULL);
+			opts_preinit(&new_argc, &new_argv);
+			/* opts_preinit must have exited – if we reach here it's a failure */
+			exit(EXIT_FAILURE);
+		} else if (g_strcmp0(subprocess_test_name, "version") == 0) {
+			gint new_argc;
+			char **new_argv;
+			g_shell_parse_argv("t --version", &new_argc, &new_argv, NULL);
+			opts_preinit(&new_argc, &new_argv);
+			exit(EXIT_FAILURE);
+		} else if (g_strcmp0(subprocess_test_name, "function") == 0) {
+			/* Minimal non‑GUI function test */
+			hash_init();
+			enum hash_func_e id = HASH_FUNC_INVALID;
+
+			for (int i = 0; i < HASH_FUNCS_N; i++) {
+				if (hash.funcs[i].supported) {
+					id = i;
+					break;
+				}
+			}
+			if (id == HASH_FUNC_INVALID)
+				exit(EXIT_FAILURE);
+
+			hash.funcs[id].enabled = false;
+
+			char *str = g_strdup_printf("t --function XX -f %s", hash.funcs[id].name);
+			gint new_argc;
+			char **new_argv;
+			g_shell_parse_argv(str, &new_argc, &new_argv, NULL);
+			g_free(str);
+
+			opts_preinit(&new_argc, &new_argv);
+
+			exit(hash.funcs[id].enabled ? EXIT_SUCCESS : EXIT_FAILURE);
+		}
+		/* For the remaining tests we need a full GTK environment –
+		   fall through */
+	}
+
 	gtk_test_init(&argc, &argv);
 
 	hash_init();
@@ -1158,6 +1199,10 @@ int main(int argc, char **argv)
 
 	gui_init();
 	check_init();
+
+	/* Set a safe default view so that callback‑triggered updates do not
+	   trip over the GUI_VIEW_IS_VALID assertion. */
+	gui.view = GUI_VIEW_FILE;
 
 #if GTK_CHECK_VERSION(4, 0, 0)
 	GtkApplication *app = gtk_application_new("org.gtkhash.test", G_APPLICATION_DEFAULT_FLAGS);
