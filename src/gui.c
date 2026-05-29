@@ -250,8 +250,8 @@ static void gui_init_objects(GtkBuilder *builder)
         "treeview"));
 #if GTK_CHECK_VERSION(4, 0, 0)
     gui.treeselection = gtk_tree_view_get_selection(gui.treeview);
-    gui.menu_treeview = GTK_WIDGET(gui_get_object_optional(builder,
-        "menu_treeview"));
+    // In GTK4, menu_treeview is a GMenu, not a GtkWidget. Do not cast it.
+    gui.menu_treeview = NULL;
 #else
     gui.treeselection = GTK_TREE_SELECTION(gui_get_object_required(builder,
         "treeselection"));
@@ -1202,10 +1202,7 @@ void gui_set_state(const enum gui_state_e state)
 #endif
     gtk_widget_set_sensitive(GTK_WIDGET(gui.treeview), !busy);
 
-#if GTK_MAJOR_VERSION >= 4
-    if (gui.menu_treeview != NULL)
-        gtk_widget_set_sensitive(GTK_WIDGET(gui.menu_treeview), !busy);
-#else
+#if !GTK_CHECK_VERSION(4, 0, 0)
     gtk_widget_set_sensitive(GTK_WIDGET(gui.menu_treeview), !busy);
 #endif
 
