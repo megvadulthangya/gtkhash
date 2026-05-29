@@ -38,20 +38,93 @@
 #include "hash/hash-string.h"
 
 #if GTK_CHECK_VERSION(4,0,0)
-static gboolean on_window_delete_event(GtkWindow *window, gpointer user_data)
-{
-    gtk_widget_set_visible(GTK_WIDGET(window), false);
-    g_application_quit(g_application_get_default());
-    return TRUE;
+/* GTK4 signal handler wrappers to match strict callback signatures */
+
+static void on_toolbutton_add_clicked_wrapper(GtkButton *button, gpointer user_data) {
+    (void)button; (void)user_data;
+    on_toolbutton_add_clicked();
 }
-#else
+static void on_toolbutton_remove_clicked_wrapper(GtkButton *button, gpointer user_data) {
+    (void)button; (void)user_data;
+    list_remove_selection();
+}
+static void on_toolbutton_clear_clicked_wrapper(GtkButton *button, gpointer user_data) {
+    (void)button; (void)user_data;
+    list_clear();
+}
+
+static void on_togglebutton_hmac_file_toggled_wrapper(GtkToggleButton *togglebutton, gpointer user_data) {
+    (void)togglebutton; (void)user_data;
+    on_togglebutton_hmac_file_toggled();
+}
+static void on_togglebutton_hmac_text_toggled_wrapper(GtkToggleButton *togglebutton, gpointer user_data) {
+    (void)togglebutton; (void)user_data;
+    on_togglebutton_hmac_text_toggled();
+}
+
+static void on_entry_text_changed(GtkEditable *editable, gpointer user_data) {
+    (void)editable; (void)user_data;
+    hash_string();
+}
+static void on_entry_hmac_file_changed(GtkEditable *editable, gpointer user_data) {
+    (void)editable; (void)user_data;
+    gui_clear_digests();
+}
+static void on_entry_hmac_text_changed(GtkEditable *editable, gpointer user_data) {
+    (void)editable; (void)user_data;
+    hash_string();
+}
+static void on_entry_check_file_changed(GtkEditable *editable, gpointer user_data) {
+    (void)editable; (void)user_data;
+    gui_check_digests();
+}
+static void on_entry_check_text_changed(GtkEditable *editable, gpointer user_data) {
+    (void)editable; (void)user_data;
+    gui_check_digests();
+}
+
+static void on_treeselection_changed_wrapper(GtkTreeSelection *selection, gpointer user_data) {
+    (void)selection; (void)user_data;
+    on_treeselection_changed();
+}
+
+static void on_button_stop_clicked(GtkButton *button, gpointer user_data) {
+    (void)button; (void)user_data;
+    gui_stop_hash();
+}
+
+static void on_dialog_button_close_clicked(GtkButton *button, gpointer user_data) {
+    (void)button; (void)user_data;
+    gtk_widget_set_visible(GTK_WIDGET(gui.dialog), false);
+}
+
+static void gui_update_toggled_cb(GtkToggleButton *togglebutton, gpointer user_data) {
+    (void)togglebutton; (void)user_data;
+    gui_update();
+}
+
+static void on_dialog_combobox_changed_wrapper(GtkComboBox *widget, gpointer user_data) {
+    (void)widget; (void)user_data;
+    on_dialog_combobox_changed();
+}
+
+static void on_filechooserbutton_clicked(GtkButton *button, gpointer user_data);
+
+static void on_dialog_delete_event_wrapper(GtkWindow *window, gpointer user_data);
+#endif
+
 static bool on_window_delete_event(void)
 {
+#if GTK_CHECK_VERSION(4,0,0)
+    gtk_widget_set_visible(GTK_WIDGET(gui.window), false);
+    g_application_quit(g_application_get_default());
+#else
     gtk_widget_hide(GTK_WIDGET(gui.window));
     gtk_main_quit();
+#endif
+
     return true;
 }
-#endif
 
 #if GTK_CHECK_VERSION(4,0,0)
 static void on_open_digest_dialog_response(GObject *source, GAsyncResult *res, gpointer user_data)
@@ -1098,9 +1171,17 @@ void callbacks_init(void)
     g_signal_connect(gui.filechooserbutton, "clicked",
                      G_CALLBACK(on_filechooserbutton_clicked), NULL);
 #endif
+    /* GTK3 connections */
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.entry_text,                     "changed",             hash_string);
     CON(gui.togglebutton_hmac_file,         "toggled",             on_togglebutton_hmac_file_toggled);
     CON(gui.togglebutton_hmac_text,         "toggled",             on_togglebutton_hmac_text_toggled);
+#else
+    /* GTK4 connections with proper signatures */
+    g_signal_connect(gui.entry_text, "changed", G_CALLBACK(on_entry_text_changed), NULL);
+    g_signal_connect(gui.togglebutton_hmac_file, "toggled", G_CALLBACK(on_togglebutton_hmac_file_toggled_wrapper), NULL);
+    g_signal_connect(gui.togglebutton_hmac_text, "toggled", G_CALLBACK(on_togglebutton_hmac_text_toggled_wrapper), NULL);
+#endif
 #if GTK_CHECK_VERSION(4,0,0)
     GtkGesture *gesture_file = gtk_gesture_click_new();
     gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(gesture_file), 0);
@@ -1115,22 +1196,36 @@ void callbacks_init(void)
     CON(gui.entry_hmac_file,                "populate-popup",      on_entry_hmac_populate_popup);
     CON(gui.entry_hmac_text,                "populate-popup",      on_entry_hmac_populate_popup);
 #endif
+
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.entry_hmac_file,                "changed",             gui_clear_digests);
     CON(gui.entry_hmac_text,                "changed",             hash_string);
     CON(gui.entry_check_file,               "changed",             gui_check_digests);
-    CON(gui.entry_check_file,               "icon-press",          on_entry_check_icon_press);
     CON(gui.entry_check_text,               "changed",             gui_check_digests);
+#else
+    g_signal_connect(gui.entry_hmac_file, "changed", G_CALLBACK(on_entry_hmac_file_changed), NULL);
+    g_signal_connect(gui.entry_hmac_text, "changed", G_CALLBACK(on_entry_hmac_text_changed), NULL);
+    g_signal_connect(gui.entry_check_file, "changed", G_CALLBACK(on_entry_check_file_changed), NULL);
+    g_signal_connect(gui.entry_check_text, "changed", G_CALLBACK(on_entry_check_text_changed), NULL);
+#endif
+    CON(gui.entry_check_file,               "icon-press",          on_entry_check_icon_press);
     CON(gui.entry_check_text,               "icon-press",          on_entry_check_icon_press);
-#if GTK_MAJOR_VERSION >= 4
+
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.toolbutton_add,                 "clicked",             on_toolbutton_add_clicked);
     CON(gui.toolbutton_remove,              "clicked",             list_remove_selection);
     CON(gui.toolbutton_clear,               "clicked",             list_clear);
 #else
-    CON(gui.toolbutton_add,                 "clicked",             on_toolbutton_add_clicked);
-    CON(gui.toolbutton_remove,              "clicked",             list_remove_selection);
-    CON(gui.toolbutton_clear,               "clicked",             list_clear);
+    g_signal_connect(gui.toolbutton_add, "clicked", G_CALLBACK(on_toolbutton_add_clicked_wrapper), NULL);
+    g_signal_connect(gui.toolbutton_remove, "clicked", G_CALLBACK(on_toolbutton_remove_clicked_wrapper), NULL);
+    g_signal_connect(gui.toolbutton_clear, "clicked", G_CALLBACK(on_toolbutton_clear_clicked_wrapper), NULL);
 #endif
+
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.treeselection,                  "changed",             on_treeselection_changed);
+#else
+    g_signal_connect(gui.treeselection, "changed", G_CALLBACK(on_treeselection_changed_wrapper), NULL);
+#endif
 #if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.treeview,                       "popup-menu",          on_treeview_popup_menu);
 #else
@@ -1159,21 +1254,41 @@ void callbacks_init(void)
 #endif
 
     CON(gui.button_hash,                    "clicked",             on_button_hash_clicked);
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.button_stop,                    "clicked",             gui_stop_hash);
+#else
+    g_signal_connect(gui.button_stop, "clicked", G_CALLBACK(on_button_stop_clicked), NULL);
+#endif
 #if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.dialog,                         "delete-event",        G_CALLBACK(on_dialog_delete_event));
 #else
     g_signal_connect(gui.dialog, "close-request", G_CALLBACK(on_dialog_delete_event), NULL);
 #endif
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.dialog_button_close,            "clicked",             G_CALLBACK(on_dialog_delete_event));
+#else
+    g_signal_connect(gui.dialog_button_close, "clicked", G_CALLBACK(on_dialog_button_close_clicked), NULL);
+#endif
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.dialog_togglebutton_show_hmac,  "toggled",             gui_update);
+#else
+    g_signal_connect(gui.dialog_togglebutton_show_hmac, "toggled", G_CALLBACK(gui_update_toggled_cb), NULL);
+#endif
+#if !GTK_CHECK_VERSION(4,0,0)
     CON(gui.dialog_combobox,                "changed",             on_dialog_combobox_changed);
+#else
+    g_signal_connect(gui.dialog_combobox, "changed", G_CALLBACK(on_dialog_combobox_changed_wrapper), NULL);
+#endif
 
     for (int i = 0; i < HASH_FUNCS_N; i++) {
         if (!hash.funcs[i].supported)
             continue;
 
+#if !GTK_CHECK_VERSION(4,0,0)
         CON(gui.hash_widgets[i].button, "toggled", gui_update);
+#else
+        g_signal_connect(gui.hash_widgets[i].button, "toggled", G_CALLBACK(gui_update_toggled_cb), NULL);
+#endif
         g_signal_connect(gui.hash_widgets[i].label_file, "clicked",
             G_CALLBACK(on_button_hash_clicked), &hash.funcs[i]);
 #if !GTK_CHECK_VERSION(4,0,0)
