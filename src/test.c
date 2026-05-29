@@ -25,6 +25,8 @@
 #undef G_DISABLE_CAST_CHECKS
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include <gtk/gtk.h>
 
 #include "callbacks.h"
@@ -391,15 +393,303 @@ static void test_hash_func_hmac(const struct hash_func_s *func)
 	select_hash_func(func->id, false);
 }
 
+/* -------------------------------------------------------------------------- */
+/* GTK4 subprocess support – spawn a fresh process to avoid post‑fork issues  */
+/* -------------------------------------------------------------------------- */
+
+#if GTK_MAJOR_VERSION >= 4
+
+static const char * get_test_executable_path(void)
+{
+	const char *path = g_getenv("GTKHASH_TEST_EXECUTABLE");
+	if (!path)
+		g_error("GTKHASH_TEST_EXECUTABLE environment variable not set");
+	return path;
+}
+
+static void run_test_binary(const char *test_name,
+                            const char *extra_args,
+                            int expected_exit_status,
+                            const char *expected_stdout_pat,
+                            const char *expected_stderr_pat)
+{
+	const char *exe = get_test_executable_path();
+	g_autoptr(GPtrArray) argv = g_ptr_array_new();
+
+	g_ptr_array_add(argv, g_strdup(exe));
+	g_ptr_array_add(argv, g_strdup("--test-subprocess-run"));
+	g_ptr_array_add(argv, g_strdup(test_name));
+
+	if (extra_args && extra_args[0]) {
+		gint eargc;
+		gchar **eargv = NULL;
+		GError *error = NULL;
+
+		if (!g_shell_parse_argv(extra_args, &eargc, &eargv, &error))
+			g_error("Failed to parse extra args: %s", error->message);
+
+		for (int i = 0; eargv[i]; i++)
+			g_ptr_array_add(argv, g_strdup(eargv[i]));
+		g_strfreev(eargv);
+	}
+
+	g_ptr_array_add(argv, NULL);
+	gchar **argv_final = (gchar **)argv->pdata;
+
+	gint exit_status;
+	g_autofree gchar *stdout_str = NULL;
+	g_autofree gchar *stderr_str = NULL;
+	GError *error = NULL;
+
+	gboolean success = g_spawn_sync(NULL, argv_final, NULL,
+	                                G_SPAWN_SEARCH_PATH,
+	                                NULL, NULL,
+	                                &stdout_str, &stderr_str,
+	                                &exit_status, &error);
+
+	for (guint i = 0; i < argv->len - 1; i++)
+		g_free(g_ptr_array_index(argv, i));
+	g_ptr_array_free(argv, TRUE);
+
+	if (!success)
+		g_error("Failed to spawn test subprocess: %s", error->message);
+
+	g_assert_cmpint(exit_status, ==, expected_exit_status);
+
+	if (expected_stdout_pat) {
+		g_assert_nonnull(stdout_str);
+		g_assert_true(g_pattern_match_simple(expected_stdout_pat, stdout_str));
+	}
+	if (expected_stderr_pat) {
+		g_assert_nonnull(stderr_str);
+		g_assert_true(g_pattern_match_simple(expected_stderr_pat, stderr_str));
+	}
+}
+
+#endif /* GTK_MAJOR_VERSION >= 4 */
+
+/* -------------------------------------------------------------------------- */
+/* Internal test helpers – called both from old fork‑based subprocesses        */
+/* (GTK3) and from the new exec‑based subprocess runner (GTK4).               */
+/* -------------------------------------------------------------------------- */
+
+static void test_opt_help_subproc(void)
+{
+	gint argc;
+	char **argv;
+	g_shell_parse_argv("t --help", &argc, &argv, NULL);
+	opts_preinit(&argc, &argv);
+	/* opts_preinit() must exit – if we reach here it’s a failure */
+	exit(EXIT_FAILURE);
+}
+
+static void test_opt_version_subproc(void)
+{
+	gint argc;
+	char **argv;
+	g_shell_parse_argv("t --version", &argc, &argv, NULL);
+	opts_preinit(&argc, &argv);
+	exit(EXIT_FAILURE);
+}
+
+static void test_opt_check_text_subproc(void)
+{
+	gint argc;
+	char **argv;
+	g_shell_parse_argv("-c fail -t aa --check 0123abcdef", &argc, &argv, NULL);
+	opts_preinit(&argc, &argv);
+	opts_postinit();
+	delay();
+#if GTK_MAJOR_VERSION >= 4
+	puts(gtk_editable_get_text(GTK_EDITABLE(gui.entry_check_text)));
+#else
+	puts(gtk_entry_get_text(GTK_ENTRY(gui.entry_check_text)));
+#endif
+	exit(EXIT_SUCCESS);
+}
+
+static void test_opt_check_file_subproc(void)
+{
+	gint argc;
+	char **argv;
+	char *args = g_strdup_printf("t --check-file '%s'",
+		g_test_get_filename(G_TEST_BUILT, "test.md5sum", NULL));
+	g_shell_parse_argv(args, &argc, &argv, NULL);
+	g_free(args);
+	opts_preinit(&argc, &argv);
+	opts_postinit();
+	delay();
+
+	g_assert(hash.funcs[HASH_FUNC_MD5].supported);
+	g_assert(hash.funcs[HASH_FUNC_MD5].enabled);
+	g_assert(gui.view == GUI_VIEW_FILE_LIST);
+	g_assert(list.rows == 9);
+
+	g_test_expect_message(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING, "*");
+	g_timeout_add_seconds(2, G_SOURCE_FUNC(exit), NULL);
+
+#if GTK_MAJOR_VERSION >= 4
+	for (;;) g_main_context_iteration(NULL, FALSE);
+#else
+	for (;;) gtk_main_iteration_do(false);
+#endif
+	exit(EXIT_FAILURE);
+}
+
+static void test_opt_function_subproc(void)
+{
+	enum hash_func_e id = HASH_FUNC_INVALID;
+
+	for (int i = 0; i < HASH_FUNCS_N; i++) {
+		if (hash.funcs[i].supported) {
+			id = i;
+			break;
+		}
+	}
+
+	if (id == HASH_FUNC_INVALID)
+		exit(EXIT_FAILURE);
+
+#if GTK_MAJOR_VERSION >= 4
+	gtk_check_button_set_active(GTK_CHECK_BUTTON(gui.hash_widgets[id].button), FALSE);
+#else
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(gui.hash_widgets[id].button), false);
+#endif
+	delay();
+
+	if (hash.funcs[id].enabled)
+		exit(EXIT_FAILURE);
+
+	char *str = g_strdup_printf("t --function XX -f %s", hash.funcs[id].name);
+	gint argc;
+	char **argv;
+	g_shell_parse_argv(str, &argc, &argv, NULL);
+	opts_preinit(&argc, &argv);
+
+	if (hash.funcs[id].enabled)
+		exit(EXIT_SUCCESS);
+	else
+		exit(EXIT_FAILURE);
+}
+
+static void test_opt_file_subproc(void)
+{
+	select_hash_func(HASH_FUNC_MD5, true);
+
+	gint argc;
+	char **argv;
+	char *args = g_strdup_printf("t -- '%s'",
+		g_test_get_filename(G_TEST_BUILT, "10M.bytes", NULL));
+	g_shell_parse_argv(args, &argc, &argv, NULL);
+	g_free(args);
+
+	opts_preinit(&argc, &argv);
+	opts_postinit();
+	delay();
+
+	g_assert(gui.view == GUI_VIEW_FILE);
+
+	/* Started from cmdline */
+#if GTK_MAJOR_VERSION >= 4
+	while (!*gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
+		g_main_context_iteration(NULL, FALSE);
+	puts(gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
+#else
+	while (!*gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
+		gtk_main_iteration_do(false);
+	puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
+#endif
+
+	/* Started from Hash button */
+#if GTK_MAJOR_VERSION >= 4
+	g_signal_emit_by_name(gui.button_hash, "clicked");
+#else
+	gtk_button_clicked(gui.button_hash);
+#endif
+	delay();
+#if GTK_MAJOR_VERSION >= 4
+	while (!*gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
+		g_main_context_iteration(NULL, FALSE);
+	puts(gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
+#else
+	while (!*gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
+		gtk_main_iteration_do(false);
+	puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
+#endif
+
+	/* Started from function label */
+#if GTK_MAJOR_VERSION >= 4
+	g_signal_emit_by_name(GTK_BUTTON(gui.hash_widgets[HASH_FUNC_MD5].label_file), "clicked");
+#else
+	gtk_button_clicked(GTK_BUTTON(gui.hash_widgets[HASH_FUNC_MD5].label_file));
+#endif
+	delay();
+#if GTK_MAJOR_VERSION >= 4
+	while (!*gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
+		g_main_context_iteration(NULL, FALSE);
+	puts(gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
+#else
+	while (!*gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
+		gtk_main_iteration_do(false);
+	puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
+#endif
+
+	exit(EXIT_SUCCESS);
+}
+
+static void test_opt_file_list_subproc(void)
+{
+	select_hash_func(HASH_FUNC_MD5, true);
+
+	gint argc;
+	char **argv;
+	char *args = g_strdup_printf("t -- '%s' '%s'",
+		g_test_get_filename(G_TEST_BUILT, "0.bytes", NULL),
+		g_test_get_filename(G_TEST_BUILT, "0.bytes", NULL));
+	g_shell_parse_argv(args, &argc, &argv, NULL);
+	g_free(args);
+
+	opts_preinit(&argc, &argv);
+	opts_postinit();
+	delay();
+
+	g_assert(gui.view == GUI_VIEW_FILE_LIST);
+	g_assert(list.rows == 2);
+
+	char *digest;
+#if GTK_MAJOR_VERSION >= 4
+	while (!(digest = list_get_digest(1, HASH_FUNC_MD5)) || !*digest)
+		g_main_context_iteration(NULL, FALSE);
+#else
+	while (!(digest = list_get_digest(1, HASH_FUNC_MD5)) || !*digest)
+		gtk_main_iteration_do(false);
+#endif
+	puts(digest);
+	g_free(digest);
+
+	gtk_tree_selection_select_all(gui.treeselection);
+	delay();
+	list_remove_selection();
+	delay();
+	g_assert(list.rows == 0);
+
+	exit(EXIT_SUCCESS);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Parent test functions (old g_test_trap_subprocess for GTK3, exec‑based     */
+/* for GTK4).                                                                 */
+/* -------------------------------------------------------------------------- */
+
+#if GTK_MAJOR_VERSION < 4
+
 static void test_opt_help(void)
 {
 	if (g_test_subprocess()) {
 		gint argc;
 		char **argv;
 		g_shell_parse_argv("t --help", &argc, &argv, NULL);
-
 		opts_preinit(&argc, &argv);
-
 		exit(EXIT_FAILURE);
 	}
 
@@ -415,9 +705,7 @@ static void test_opt_version(void)
 		gint argc;
 		char **argv;
 		g_shell_parse_argv("t --version", &argc, &argv, NULL);
-
 		opts_preinit(&argc, &argv);
-
 		exit(EXIT_FAILURE);
 	}
 
@@ -431,12 +719,10 @@ static void test_opt_check_text(void)
 	if (g_test_subprocess()) {
 		gint argc;
 		char **argv;
-		g_shell_parse_argv("t -c fail -t aa --check 0123abcdef", &argc, &argv, NULL);
-
+		g_shell_parse_argv("-c fail -t aa --check 0123abcdef", &argc, &argv, NULL);
 		opts_preinit(&argc, &argv);
 		opts_postinit();
 		delay();
-
 #if GTK_MAJOR_VERSION >= 4
 		puts(gtk_editable_get_text(GTK_EDITABLE(gui.entry_check_text)));
 #else
@@ -457,10 +743,8 @@ static void test_opt_check_file(void)
 		char **argv;
 		char *args = g_strdup_printf("t --check-file '%s'",
 			g_test_get_filename(G_TEST_BUILT, "test.md5sum", NULL));
-
 		g_shell_parse_argv(args, &argc, &argv, NULL);
 		g_free(args);
-
 		opts_preinit(&argc, &argv);
 		opts_postinit();
 		delay();
@@ -470,18 +754,14 @@ static void test_opt_check_file(void)
 		g_assert(gui.view == GUI_VIEW_FILE_LIST);
 		g_assert(list.rows == 9);
 
-		// OK to exit before finish, with warnings
 		g_test_expect_message(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING, "*");
 		g_timeout_add_seconds(2, G_SOURCE_FUNC(exit), NULL);
 
 #if GTK_MAJOR_VERSION >= 4
-		for (;;)
-			g_main_context_iteration(NULL, FALSE);
+		for (;;) g_main_context_iteration(NULL, FALSE);
 #else
-		for (;;)
-			gtk_main_iteration_do(false);
+		for (;;) gtk_main_iteration_do(false);
 #endif
-
 		exit(EXIT_FAILURE);
 	}
 
@@ -495,7 +775,6 @@ static void test_opt_function(void)
 	if (g_test_subprocess()) {
 		enum hash_func_e id = HASH_FUNC_INVALID;
 
-		// Select first available function for the test
 		for (int i = 0; i < HASH_FUNCS_N; i++) {
 			if (hash.funcs[i].supported) {
 				id = i;
@@ -506,7 +785,6 @@ static void test_opt_function(void)
 		if (id == HASH_FUNC_INVALID)
 			exit(EXIT_FAILURE);
 
-		// Disable the function
 #if GTK_MAJOR_VERSION >= 4
 		gtk_check_button_set_active(GTK_CHECK_BUTTON(gui.hash_widgets[id].button), FALSE);
 #else
@@ -517,7 +795,6 @@ static void test_opt_function(void)
 		if (hash.funcs[id].enabled)
 			exit(EXIT_FAILURE);
 
-		// Enable the function from cmdline
 		char *str = g_strdup_printf("%s %s", "t --function XX -f", hash.funcs[id].name);
 		gint argc;
 		char **argv;
@@ -555,7 +832,6 @@ static void test_opt_file(void)
 
 		g_assert(gui.view == GUI_VIEW_FILE);
 
-		// Started from cmdline
 #if GTK_MAJOR_VERSION >= 4
 		while (!*gtk_editable_get_text(GTK_EDITABLE(gui.hash_widgets[HASH_FUNC_MD5].entry_file)))
 			g_main_context_iteration(NULL, FALSE);
@@ -566,7 +842,6 @@ static void test_opt_file(void)
 		puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
 #endif
 
-		// Started from Hash button
 #if GTK_MAJOR_VERSION >= 4
 		g_signal_emit_by_name(gui.button_hash, "clicked");
 #else
@@ -583,7 +858,6 @@ static void test_opt_file(void)
 		puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_file)));
 #endif
 
-		// Started from function label
 #if GTK_MAJOR_VERSION >= 4
 		g_signal_emit_by_name(GTK_BUTTON(gui.hash_widgets[HASH_FUNC_MD5].label_file), "clicked");
 #else
@@ -657,6 +931,50 @@ static void test_opt_file_list(void)
 	g_test_trap_assert_stdout("*d41d8cd98f00b204e9800998ecf8427e*");
 }
 
+#else  /* GTK_MAJOR_VERSION >= 4 – exec‑based tests */
+
+static void test_opt_help_gtk4(void)
+{
+	run_test_binary("help", "t --help", EXIT_SUCCESS, "*--help*", NULL);
+}
+
+static void test_opt_version_gtk4(void)
+{
+	run_test_binary("version", "t --version", EXIT_SUCCESS, PACKAGE_STRING "*", NULL);
+}
+
+static void test_opt_check_text_gtk4(void)
+{
+	run_test_binary("check-text", "-c fail -t aa --check 0123abcdef",
+	                EXIT_SUCCESS, "0123abcdef*", NULL);
+}
+
+static void test_opt_check_file_gtk4(void)
+{
+	run_test_binary("check-file", NULL, EXIT_SUCCESS, NULL, "*notfound.bytes*");
+}
+
+static void test_opt_function_gtk4(void)
+{
+	run_test_binary("function", NULL, EXIT_SUCCESS, NULL, "*Unknown*XX*");
+}
+
+static void test_opt_file_gtk4(void)
+{
+	run_test_binary("file", NULL, EXIT_SUCCESS,
+	                "*f1c9645dbc14efddc7d8a322685f26eb*"
+	                "*f1c9645dbc14efddc7d8a322685f26eb*"
+	                "*f1c9645dbc14efddc7d8a322685f26eb*", NULL);
+}
+
+static void test_opt_file_list_gtk4(void)
+{
+	run_test_binary("file-list", NULL, EXIT_SUCCESS,
+	                "*d41d8cd98f00b204e9800998ecf8427e*", NULL);
+}
+
+#endif /* GTK_MAJOR_VERSION < 4 */
+
 static void test_digest_format_hex_lower()
 {
 	if (g_test_subprocess()) {
@@ -669,7 +987,6 @@ static void test_digest_format_hex_lower()
 #else
 		puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
 #endif
-
 		exit(EXIT_SUCCESS);
 	}
 
@@ -690,7 +1007,6 @@ static void test_digest_format_hex_upper()
 #else
 		puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
 #endif
-
 		exit(EXIT_SUCCESS);
 	}
 
@@ -711,7 +1027,6 @@ static void test_digest_format_base64()
 #else
 		puts(gtk_entry_get_text(GTK_ENTRY(gui.hash_widgets[HASH_FUNC_MD5].entry_text)));
 #endif
-
 		exit(EXIT_SUCCESS);
 	}
 
@@ -726,7 +1041,7 @@ static void test_init(void)
 
 	const char * const lib = g_getenv("GTKHASH_TEST_LIB");
 
-	// Test plain hash
+	/* Test plain hash */
 	for (int i = 0; i < HASH_FUNCS_N; i++) {
 		if (lib && !hash.funcs[i].supported)
 			continue;
@@ -738,7 +1053,7 @@ static void test_init(void)
 		g_free(path);
 	}
 
-	// Test HMAC
+	/* Test HMAC */
 	for (int i = 0; i < HASH_FUNCS_N; i++) {
 		if (lib && (!hash.funcs[i].supported || !hash.funcs[i].hmac_supported))
 			continue;
@@ -753,7 +1068,8 @@ static void test_init(void)
 	if (lib)
 		return;
 
-	// Test cmdline options
+	/* Test cmdline options */
+#if GTK_MAJOR_VERSION < 4
 	g_test_add_func("/opt/help", test_opt_help);
 	g_test_add_func("/opt/version", test_opt_version);
 	g_test_add_func("/opt/check/text", test_opt_check_text);
@@ -761,11 +1077,45 @@ static void test_init(void)
 	g_test_add_func("/opt/function", test_opt_function);
 	g_test_add_func("/opt/file", test_opt_file);
 	g_test_add_func("/opt/file-list", test_opt_file_list);
+#else
+	g_test_add_func("/opt/help", test_opt_help_gtk4);
+	g_test_add_func("/opt/version", test_opt_version_gtk4);
+	g_test_add_func("/opt/check/text", test_opt_check_text_gtk4);
+	g_test_add_func("/opt/check/file", test_opt_check_file_gtk4);
+	g_test_add_func("/opt/function", test_opt_function_gtk4);
+	g_test_add_func("/opt/file", test_opt_file_gtk4);
+	g_test_add_func("/opt/file-list", test_opt_file_list_gtk4);
+#endif
 
-	// Test digest formats
+	/* Test digest formats */
 	g_test_add_func("/digest-format/base64", test_digest_format_base64);
 	g_test_add_func("/digest-format/hex-lower", test_digest_format_hex_lower);
 	g_test_add_func("/digest-format/hex-upper", test_digest_format_hex_upper);
+}
+
+/* -------------------------------------------------------------------------- */
+/* --test-subprocess-run dispatcher                                           */
+/* -------------------------------------------------------------------------- */
+static void run_subprocess_test(const char *name)
+{
+	if (g_strcmp0(name, "help") == 0)
+		test_opt_help_subproc();
+	else if (g_strcmp0(name, "version") == 0)
+		test_opt_version_subproc();
+	else if (g_strcmp0(name, "check-text") == 0)
+		test_opt_check_text_subproc();
+	else if (g_strcmp0(name, "check-file") == 0)
+		test_opt_check_file_subproc();
+	else if (g_strcmp0(name, "function") == 0)
+		test_opt_function_subproc();
+	else if (g_strcmp0(name, "file") == 0)
+		test_opt_file_subproc();
+	else if (g_strcmp0(name, "file-list") == 0)
+		test_opt_file_list_subproc();
+	else
+		g_error("Unknown test subprocess: %s", name);
+
+	exit(EXIT_FAILURE); /* should never reach here */
 }
 
 int main(int argc, char **argv)
@@ -775,6 +1125,26 @@ int main(int argc, char **argv)
 	g_setenv("GSK_RENDERER", "cairo", TRUE);
 	g_setenv("GDK_GL", "disable", TRUE);
 #endif
+
+	/* Parse our hidden subprocess-run option before GTK init */
+	gboolean subprocess_mode = FALSE;
+	gchar *subprocess_test_name = NULL;
+	for (int i = 1; i < argc; i++) {
+		if (g_strcmp0(argv[i], "--test-subprocess-run") == 0) {
+			if (i + 1 < argc) {
+				subprocess_test_name = g_strdup(argv[i + 1]);
+				subprocess_mode = TRUE;
+				/* remove the two arguments */
+				for (int j = i; j < argc - 2; j++)
+					argv[j] = argv[j + 2];
+				argc -= 2;
+				break;
+			} else {
+				g_printerr("Missing test name for --test-subprocess-run\n");
+				return EXIT_FAILURE;
+			}
+		}
+	}
 
 	gtk_test_init(&argc, &argv);
 
@@ -805,16 +1175,15 @@ int main(int argc, char **argv)
 	callbacks_init();
 #endif
 
-	// Ignore user input during testing
+	/* Ignore user input during testing */
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.window), false);
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.dialog), false);
 
-#if GTK_MAJOR_VERSION >= 4
-	/* Do not realize widgets in headless GTK4 to avoid GL context creation */
-#else
-	gtk_widget_show(GTK_WIDGET(gui.window));
-	gtk_widget_show(GTK_WIDGET(gui.dialog));
-#endif
+	if (subprocess_mode) {
+		run_subprocess_test(subprocess_test_name);
+		g_free(subprocess_test_name);
+		return EXIT_FAILURE; /* should not get here */
+	}
 
 	test_init();
 

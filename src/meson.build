@@ -94,6 +94,8 @@ if build_gtkhash
 
     # Environment for tests: force software rendering to avoid GL crashes.
     test_env = ['GSK_RENDERER=cairo', 'GDK_GL=disable']
+    # Also provide the path to the test executable so it can spawn itself
+    test_env += 'GTKHASH_TEST_EXECUTABLE=@0@'.format(gtkhash_test.full_path())
 
     foreach lib, functions : hash_libs
         lib_enabled = config.get('ENABLE_' + lib.to_upper()) == 1
