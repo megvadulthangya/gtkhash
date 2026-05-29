@@ -631,7 +631,7 @@ static void show_menu_treeview(GdkEventButton *event)
 #endif
 
 #if GTK_CHECK_VERSION(4,0,0)
-    if (GTK_IS_POPOVER(gui.menu_treeview)) {
+    if (gui.menu_treeview != NULL && GTK_IS_POPOVER(gui.menu_treeview)) {
         GdkRectangle rect = { (int)x, (int)y, 1, 1 };
         gtk_popover_set_pointing_to(GTK_POPOVER(gui.menu_treeview), &rect);
         gtk_popover_popup(GTK_POPOVER(gui.menu_treeview));
@@ -1214,7 +1214,7 @@ void callbacks_init(void)
         g_action_map_add_action(G_ACTION_MAP(gui.window), G_ACTION(toolbar_action));
 
         // Replace treeview popover model with dynamic one
-        if (GTK_IS_POPOVER_MENU(gui.menu_treeview)) {
+        if (gui.menu_treeview != NULL && GTK_IS_POPOVER_MENU(gui.menu_treeview)) {
             GMenuModel *treeview_menu = create_treeview_popover_model();
             gtk_popover_menu_set_menu_model(GTK_POPOVER_MENU(gui.menu_treeview), treeview_menu);
         }
