@@ -92,13 +92,8 @@ if build_gtkhash
         )
     endforeach
 
-    # Environment for tests: avoid GL crashes by forcing cairo renderer
-    # and disabling GL for GTK4.
-    test_env = []
-    if gtk_version == '4'
-        test_env += 'GSK_RENDERER=cairo'
-        test_env += 'GDK_GL=disable'
-    endif
+    # Environment for tests: force software rendering to avoid GL crashes.
+    test_env = ['GSK_RENDERER=cairo', 'GDK_GL=disable']
 
     foreach lib, functions : hash_libs
         lib_enabled = config.get('ENABLE_' + lib.to_upper()) == 1
