@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <gtk/gtk.h>
 
 #include "callbacks.h"
@@ -455,10 +456,19 @@ static void run_test_binary(const char *test_name,
 		g_error("Failed to spawn test subprocess: %s", error->message);
 
 	if (exit_status != expected_exit_status) {
-		g_test_message("Subprocess '%s' exited with status %d (signal %d), expected %d",
-		               test_name, exit_status,
-		               (exit_status >= 128 ? exit_status - 128 : -1),
-		               expected_exit_status);
+		if (WIFEXITED(exit_status))
+			g_test_message("Subprocess '%s' exited with code %d (expected %d)",
+			               test_name, WEXITSTATUS(exit_status), expected_exit_status);
+		else if (WIFSIGNALED(exit_status))
+			g_test_message("Subprocess '%s' terminated by signal %d (%s) (expected exit %d)",
+			               test_name, WTERMSIG(exit_status),
+			               g_strsignal(WTERMSIG(exit_status)), expected_exit_status);
+		else
+			g_test_message("Subprocess '%s' exited with raw status %d (expected %d)",
+			               test_name, exit_status, expected_exit_status);
+
+		g_test_message("stdout: %s", stdout_str ? stdout_str : "(null)");
+		g_test_message("stderr: %s", stderr_str ? stderr_str : "(null)");
 	}
 	g_assert_cmpint(exit_status, ==, expected_exit_status);
 
@@ -1171,11 +1181,41 @@ static void test_init(void)
 }
 
 /* -------------------------------------------------------------------------- */
-/* --test-subprocess-run dispatcher                                           */
+/* GTK subprocess test runner (for subprocess tests that need a full GUI)      */
 /* -------------------------------------------------------------------------- */
-static void run_subprocess_test(const char *name)
+#if GTK_MAJOR_VERSION >= 4
+static void run_gtk_subprocess_test(const char *name, int *argc, char ***argv)
 {
-	/* Only GUI‑requiring tests end up here */
+	gtk_test_init(argc, argv);
+	hash_init();
+
+	/* Load test‑specific UI resource before gui_init() */
+	test_ui_resource_register_resource();
+	gui_set_test_resource("/org/gtkhash/gtkhash-gtk4-test.ui");
+
+	gui_init();
+	check_init();
+
+	/* Set a safe default view so that callback‑triggered updates do not
+	   trip over the GUI_VIEW_IS_VALID assertion. */
+	gui.view = GUI_VIEW_FILE;
+
+	GtkApplication *app = gtk_application_new("org.gtkhash.test", G_APPLICATION_DEFAULT_FLAGS);
+	{
+		GError *error = NULL;
+		g_application_register(G_APPLICATION(app), NULL, &error);
+		if (error) {
+			g_warning("Application registration failed: %s", error->message);
+			g_clear_error(&error);
+		}
+	}
+	gui_set_application(app);
+	callbacks_init(app);
+
+	/* Ignore user input during testing */
+	gtk_widget_set_sensitive(GTK_WIDGET(gui.window), false);
+	gtk_widget_set_sensitive(GTK_WIDGET(gui.dialog), false);
+
 	if (g_strcmp0(name, "check-text") == 0)
 		test_opt_check_text_subproc();
 	else if (g_strcmp0(name, "check-file") == 0)
@@ -1191,11 +1231,21 @@ static void run_subprocess_test(const char *name)
 	else if (g_strcmp0(name, "digest-hex-upper") == 0)
 		test_digest_format_hex_upper_subproc();
 	else
-		g_error("Unknown test subprocess: %s", name);
+		g_error("Unknown GUI subprocess test: %s", name);
 
-	exit(EXIT_FAILURE); /* should never reach here */
+	/* The test functions should have called exit() – if we get here cleanup and bail out */
+	check_deinit();
+	gui_deinit();
+	test_ui_resource_unregister_resource();
+	hash_deinit();
+	g_object_unref(app);
+	exit(EXIT_FAILURE);
 }
+#endif /* GTK_MAJOR_VERSION >= 4 */
 
+/* -------------------------------------------------------------------------- */
+/* main                                                                        */
+/* -------------------------------------------------------------------------- */
 int main(int argc, char **argv)
 {
 #if GTK_MAJOR_VERSION >= 4
@@ -1204,7 +1254,7 @@ int main(int argc, char **argv)
 	g_setenv("GDK_GL", "disable", TRUE);
 #endif
 
-	/* Parse our hidden subprocess-run option before GTK init */
+	/* Parse our hidden subprocess‑run option before any GTK init */
 	gboolean subprocess_mode = FALSE;
 	gchar *subprocess_test_name = NULL;
 	for (int i = 1; i < argc; i++) {
@@ -1212,7 +1262,7 @@ int main(int argc, char **argv)
 			if (i + 1 < argc) {
 				subprocess_test_name = g_strdup(argv[i + 1]);
 				subprocess_mode = TRUE;
-				/* remove the two arguments */
+				/* remove the two arguments from the argument vector */
 				for (int j = i; j < argc - 2; j++)
 					argv[j] = argv[j + 2];
 				argc -= 2;
@@ -1224,14 +1274,16 @@ int main(int argc, char **argv)
 		}
 	}
 
-	/* Handle subprocess tests that require no GUI at all */
+	/* Handle subprocess tests that do NOT need GTK at all.
+	   These must be executed before any GTK initialization so that we
+	   never touch GTK widgets or call gtk_init/gui_init in these paths. */
 	if (subprocess_mode) {
 		if (g_strcmp0(subprocess_test_name, "help") == 0) {
 			gint new_argc;
 			char **new_argv;
 			g_shell_parse_argv("t --help", &new_argc, &new_argv, NULL);
 			opts_preinit(&new_argc, &new_argv);
-			/* opts_preinit must have exited – if we reach here it's a failure */
+			/* opts_preinit() must exit – if we reach here it’s a failure */
 			exit(EXIT_FAILURE);
 		} else if (g_strcmp0(subprocess_test_name, "version") == 0) {
 			gint new_argc;
@@ -1250,8 +1302,10 @@ int main(int argc, char **argv)
 					break;
 				}
 			}
-			if (id == HASH_FUNC_INVALID)
+			if (id == HASH_FUNC_INVALID) {
+				hash_deinit();
 				exit(EXIT_FAILURE);
+			}
 
 			hash.funcs[id].enabled = false;
 
@@ -1263,18 +1317,31 @@ int main(int argc, char **argv)
 
 			opts_preinit(&new_argc, &new_argv);
 
-			exit(hash.funcs[id].enabled ? EXIT_SUCCESS : EXIT_FAILURE);
+			int ret = hash.funcs[id].enabled ? EXIT_SUCCESS : EXIT_FAILURE;
+			hash_deinit();
+			exit(ret);
+		} else {
+			/* All other subprocess tests require a GTK environment.
+			   Run them in a dedicated runner that isolates GUI init. */
+#if GTK_MAJOR_VERSION >= 4
+			run_gtk_subprocess_test(subprocess_test_name, &argc, &argv);
+			/* never returns */
+#else
+			/* GTK3 subprocess tests use g_test_subprocess and are
+			   already covered by the parent functions; this path should
+			   not be reached. */
+			g_error("Unexpected subprocess test '%s' in GTK3 build",
+			        subprocess_test_name);
+#endif
 		}
-		/* For the remaining tests we need a full GTK environment –
-		   fall through */
 	}
 
+	/* ----- Normal (parent) test runner ----- */
 	gtk_test_init(&argc, &argv);
-
 	hash_init();
 
 #if GTK_MAJOR_VERSION >= 4
-	/* Load test-specific UI resource before gui_init() */
+	/* Load test‑specific UI resource before gui_init() */
 	test_ui_resource_register_resource();
 	gui_set_test_resource("/org/gtkhash/gtkhash-gtk4-test.ui");
 #endif
@@ -1305,12 +1372,6 @@ int main(int argc, char **argv)
 	/* Ignore user input during testing */
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.window), false);
 	gtk_widget_set_sensitive(GTK_WIDGET(gui.dialog), false);
-
-	if (subprocess_mode) {
-		run_subprocess_test(subprocess_test_name);
-		g_free(subprocess_test_name);
-		return EXIT_FAILURE; /* should not get here */
-	}
 
 	test_init();
 
