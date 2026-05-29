@@ -37,18 +37,21 @@
 #include "uri-digest.h"
 #include "hash/hash-string.h"
 
+#if GTK_CHECK_VERSION(4,0,0)
+static gboolean on_window_delete_event(GtkWindow *window, gpointer user_data)
+{
+    gtk_widget_set_visible(GTK_WIDGET(window), false);
+    g_application_quit(g_application_get_default());
+    return TRUE;
+}
+#else
 static bool on_window_delete_event(void)
 {
-#if GTK_CHECK_VERSION(4,0,0)
-    gtk_widget_set_visible(GTK_WIDGET(gui.window), false);
-    g_application_quit(g_application_get_default());
-#else
     gtk_widget_hide(GTK_WIDGET(gui.window));
     gtk_main_quit();
-#endif
-
     return true;
 }
+#endif
 
 #if GTK_CHECK_VERSION(4,0,0)
 static void on_open_digest_dialog_response(GObject *source, GAsyncResult *res, gpointer user_data)
@@ -870,15 +873,19 @@ static void on_entry_hmac_populate_popup(GtkEntry *entry, GtkMenu *menu)
 }
 #endif
 
+#if GTK_CHECK_VERSION(4,0,0)
+static gboolean on_dialog_delete_event(GtkWindow *dialog, gpointer user_data)
+{
+    gtk_widget_set_visible(GTK_WIDGET(dialog), false);
+    return TRUE;
+}
+#else
 static bool on_dialog_delete_event(void)
 {
-#if GTK_CHECK_VERSION(4,0,0)
-    gtk_widget_set_visible(GTK_WIDGET(gui.dialog), false);
-#else
     gtk_widget_hide(GTK_WIDGET(gui.dialog));
-#endif
     return true;
 }
+#endif
 
 static void on_dialog_combobox_changed(void)
 {
