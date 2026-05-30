@@ -44,11 +44,19 @@ static bool gtkhash_hash_lib_mbedtls_set_type(const enum hash_func_e id,
 {
 	switch (id) {
 		case HASH_FUNC_MD2:
+#ifdef MBEDTLS_MD_MD2
 			*type = MBEDTLS_MD_MD2;
 			break;
+#else
+			return false;
+#endif
 		case HASH_FUNC_MD4:
+#ifdef MBEDTLS_MD_MD4
 			*type = MBEDTLS_MD_MD4;
 			break;
+#else
+			return false;
+#endif
 		case HASH_FUNC_MD5:
 			*type = MBEDTLS_MD_MD5;
 			break;
