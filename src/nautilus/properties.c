@@ -164,6 +164,26 @@ static void gtkhash_properties_on_menu_map_event(struct page_s *page) {
 }
 #endif
 
+#if GTK_CHECK_VERSION(4, 0, 0)
+static void gtkhash_properties_on_treeview_pressed(GtkGestureClick *gesture, int n_press, double x, double y, struct page_s *page) {
+    GtkWidget *popover = gtk_popover_menu_new_from_model(page->menu_model);
+    gtk_widget_set_parent(popover, GTK_WIDGET(page->treeview));
+    GdkRectangle rect = { (int)x, (int)y, 1, 1 };
+    gtk_popover_set_pointing_to(GTK_POPOVER(popover), &rect);
+    gtk_popover_popup(GTK_POPOVER(popover));
+}
+
+static void gtkhash_properties_on_copy_digest_action(G_GNUC_UNUSED GSimpleAction *action, G_GNUC_UNUSED GVariant *parameter, struct page_s *page) {
+    gtkhash_properties_on_menuitem_copy_activate(page);
+}
+
+static void gtkhash_properties_on_show_disabled_change_state(GSimpleAction *action, GVariant *value, struct page_s *page) {
+    g_simple_action_set_state(action, value);
+    g_settings_set_boolean(page->prefs, "show-disabled-hash-functions", g_variant_get_boolean(value));
+    gtkhash_properties_on_menuitem_show_funcs_toggled(page);
+}
+#endif
+
 static void gtkhash_properties_on_menuitem_copy_activate(struct page_s *page) {
 #if GTK_CHECK_VERSION(4, 0, 0)
     GdkClipboard *clipboard = gtk_widget_get_clipboard(GTK_WIDGET(page->box));
@@ -268,6 +288,10 @@ static void gtkhash_properties_free_page(struct page_s *page) {
     g_free(page->uri);
 #if !GTK_CHECK_VERSION(4, 0, 0)
     g_object_unref(page->menu);
+#else
+    g_clear_object(&page->menu_model);
+    g_clear_object(&page->gesture);
+    g_clear_object(&page->action_group);
 #endif
     g_object_unref(page->box);
     g_free(page);
@@ -286,9 +310,12 @@ static void gtkhash_properties_init_objects(struct page_s *page, GtkBuilder *bui
     page->menuitem_copy = GTK_MENU_ITEM(gtkhash_properties_get_object(builder, "imagemenuitem_copy"));
     page->menuitem_show_funcs = GTK_CHECK_MENU_ITEM(gtkhash_properties_get_object(builder, "checkmenuitem_show_funcs"));
 #else
-    /* GTK4: no context menu; properties page is not attached to any model */
+    /* GTK4: load the GMenu model for the popover */
+    page->menu_model = G_MENU_MODEL(gtkhash_properties_get_object(builder, "popup_menu_model"));
+    if (page->menu_model)
+        g_object_ref(page->menu_model);
     page->menuitem_copy = NULL;
-    page->menuitem_show_funcs = GTK_CHECK_BUTTON(gtk_check_button_new_with_label(_("Show Disabled Hash Functions")));
+    page->menuitem_show_funcs = NULL;
     page->menu = NULL;
 #endif
     page->hbox_inputs = GTK_WIDGET(gtkhash_properties_get_object(builder, "hbox_inputs"));
@@ -307,7 +334,24 @@ static void gtkhash_properties_connect_signals(struct page_s *page) {
     g_signal_connect_swapped(page->treeview, "popup-menu", G_CALLBACK(gtkhash_properties_on_treeview_popup_menu), page);
     g_signal_connect_swapped(page->treeview, "button-press-event", G_CALLBACK(gtkhash_properties_on_treeview_button_press_event), page);
 #else
-    /* no context menu */
+    /* GTK4: right-click gesture with popover menu */
+    page->gesture = gtk_gesture_click_new();
+    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(page->gesture), GDK_BUTTON_SECONDARY);
+    gtk_widget_add_controller(GTK_WIDGET(page->treeview), GTK_EVENT_CONTROLLER(page->gesture));
+    g_signal_connect(page->gesture, "pressed", G_CALLBACK(gtkhash_properties_on_treeview_pressed), page);
+
+    /* Actions */
+    page->action_group = g_simple_action_group_new();
+    GAction *copy_action = g_simple_action_new("copy-digest", NULL);
+    g_signal_connect(copy_action, "activate", G_CALLBACK(gtkhash_properties_on_copy_digest_action), page);
+    g_action_map_add_action(G_ACTION_MAP(page->action_group), copy_action);
+
+    gboolean show_disabled = g_settings_get_boolean(page->prefs, "show-disabled-hash-functions");
+    GAction *show_action = g_simple_action_new_stateful("show-disabled", NULL, g_variant_new_boolean(show_disabled));
+    g_signal_connect(show_action, "change-state", G_CALLBACK(gtkhash_properties_on_show_disabled_change_state), page);
+    g_action_map_add_action(G_ACTION_MAP(page->action_group), show_action);
+
+    gtk_widget_insert_action_group(page->box, "view", G_ACTION_GROUP(page->action_group));
 #endif
 #if !GTK_CHECK_VERSION(4, 0, 0)
     g_signal_connect_swapped(page->treeview, "row-activated", G_CALLBACK(gtkhash_properties_on_treeview_row_activated), page);
