@@ -47,6 +47,8 @@ libtool
 stamp-h1
 stamp-it
 test.md5sum
+merge-gtk
+gtk4-files
 
 *~
 *.bytes

@@ -129,7 +129,15 @@ void gtkhash_hash_lib_mbedtls_stop(struct hash_func_s *func)
 uint8_t *gtkhash_hash_lib_mbedtls_finish(struct hash_func_s *func,
 	size_t *size)
 {
-	*size = mbedtls_md_get_size(LIB_DATA->ctx.md_info);
+	const mbedtls_md_info_t *info = mbedtls_md_ctx_get_md_info(&LIB_DATA->ctx);
+	if (!info) {
+		mbedtls_md_free(&LIB_DATA->ctx);
+		g_free(LIB_DATA);
+		*size = 0;
+		return NULL;
+	}
+
+	*size = mbedtls_md_get_size(info);
 	uint8_t *digest = g_malloc(*size);
 
 	if (mbedtls_md_finish(&LIB_DATA->ctx, digest) != 0)
