@@ -21,6 +21,7 @@
 	#include "config.h"
 #endif
 
+#undef GTK_DISABLE_DEPRECATED
 #include <gtk/gtk.h>
 
 #if defined(IN_NAUTILUS_EXTENSION)
