@@ -574,10 +574,13 @@ static GList *gtkhash_properties_get_models(
 	G_GNUC_UNUSED NautilusPropertiesModelProvider *provider,
 	GList *files)
 {
+	g_warning("GTKHASH-DEBUG: get_models called");
+
 	/* Nautilus 43+ properties model integration is disabled.
 	 * Return an empty list so compilation succeeds without
 	 * requiring NautilusPropertiesModel or widget embedding.
 	 */
+	g_warning("GTKHASH-DEBUG: get_models returning NULL because Nautilus properties model integration is disabled");
 	return NULL;
 }
 #else
@@ -749,6 +752,8 @@ PUBLIC void thunar_extension_initialize(GTypeModule *module);
 PUBLIC void thunar_extension_initialize(GTypeModule *module)
 #endif
 {
+	g_warning("GTKHASH-DEBUG: nautilus_module_initialize called");
+
 	gtkhash_properties_register_type(module);
 
 #if ENABLE_NLS
@@ -790,6 +795,8 @@ PUBLIC void thunar_extension_list_types(const GType **types, int *num_types);
 PUBLIC void thunar_extension_list_types(const GType **types, int *num_types)
 #endif
 {
+	g_warning("GTKHASH-DEBUG: nautilus_module_list_types called");
+
 	static GType type_list[1];
 
 	type_list[0] = page_type;
