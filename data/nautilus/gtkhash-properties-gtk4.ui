@@ -4,36 +4,17 @@
   <object class="GtkImage" id="image_copy">
     <property name="icon_name">edit-copy</property>
   </object>
-  <object class="GtkMenu" id="menu">
-    <child>
-      <object class="GtkMenuItem" id="imagemenuitem_copy">
-        <property name="label" translatable="yes">_Copy Digest</property>
-        <child>
-          <object class="GtkBox">
-            <child>
-              <object class="GtkImage">
-                <property name="icon_name">edit-copy</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="label" translatable="yes">_Copy Digest</property>
-              </object>
-            </child>
-          </object>
-        </child>
-      </object>
-    </child>
-    <child>
-      <object class="GtkSeparatorMenuItem"/>
-    </child>
-    <child>
-      <object class="GtkCheckMenuItem" id="checkmenuitem_show_funcs">
-        <property name="label" translatable="yes">Show _Disabled Hash Functions</property>
-        <property name="active">True</property>
-      </object>
-    </child>
-  </object>
+  <menu id="popup_menu_model">
+    <item>
+      <attribute name="label" translatable="yes">_Copy Digest</attribute>
+      <attribute name="action">view.copy-digest</attribute>
+    </item>
+    <item/>
+    <item>
+      <attribute name="label" translatable="yes">Show _Disabled Hash Functions</attribute>
+      <attribute name="action">view.show-disabled</attribute>
+    </item>
+  </menu>
   <object class="GtkImage" id="image_execute">
     <property name="icon_name">system-run</property>
   </object>
