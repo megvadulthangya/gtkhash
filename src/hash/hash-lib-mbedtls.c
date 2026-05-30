@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <glib.h>
 #include <mbedtls/md.h>
+#include <mbedtls/version.h>
 
 #include "hash-lib.h"
 #include "hash-func.h"
@@ -129,7 +130,12 @@ void gtkhash_hash_lib_mbedtls_stop(struct hash_func_s *func)
 uint8_t *gtkhash_hash_lib_mbedtls_finish(struct hash_func_s *func,
 	size_t *size)
 {
-	const mbedtls_md_info_t *info = mbedtls_md_ctx_get_md_info(&LIB_DATA->ctx);
+#if MBEDTLS_VERSION_NUMBER >= 0x03000000
+	const mbedtls_md_info_t *info = mbedtls_md_info_from_ctx(&LIB_DATA->ctx);
+#else
+	const mbedtls_md_info_t *info = LIB_DATA->ctx.md_info;
+#endif
+
 	if (!info) {
 		mbedtls_md_free(&LIB_DATA->ctx);
 		g_free(LIB_DATA);
