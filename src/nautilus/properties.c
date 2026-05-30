@@ -191,6 +191,9 @@ static bool gtkhash_properties_on_treeview_button_press_event(
 #endif
 
 #if GTK_CHECK_VERSION(4, 0, 0)
+static void gtkhash_properties_on_menuitem_copy_activate(struct page_s *page);
+static void gtkhash_properties_on_menuitem_show_funcs_toggled(struct page_s *page);
+
 static void gtkhash_properties_on_treeview_pressed(GtkGestureClick *gesture,
 	int n_press, double x, double y, struct page_s *page)
 {
@@ -476,15 +479,15 @@ static void gtkhash_properties_connect_signals(struct page_s *page)
 
 	/* Actions */
 	page->action_group = g_simple_action_group_new();
-	GAction *copy_action = g_simple_action_new("copy-digest", NULL);
+	GAction *copy_action = G_ACTION(g_simple_action_new("copy-digest", NULL));
 	g_signal_connect(copy_action, "activate",
 		G_CALLBACK(gtkhash_properties_on_copy_digest_action), page);
 	g_action_map_add_action(G_ACTION_MAP(page->action_group), copy_action);
 
 	gboolean show_disabled = g_settings_get_boolean(page->prefs,
 		"show-disabled-hash-functions");
-	GAction *show_action = g_simple_action_new_stateful("show-disabled",
-		NULL, g_variant_new_boolean(show_disabled));
+	GAction *show_action = G_ACTION(g_simple_action_new_stateful("show-disabled",
+		NULL, g_variant_new_boolean(show_disabled)));
 	g_signal_connect(show_action, "change-state",
 		G_CALLBACK(gtkhash_properties_on_show_disabled_change_state), page);
 	g_action_map_add_action(G_ACTION_MAP(page->action_group), show_action);
