@@ -21,6 +21,8 @@
 	#include "config.h"
 #endif
 
+#include <gtk/gtk.h>
+
 #if defined(IN_NAUTILUS_EXTENSION)
 	#if GTK_CHECK_VERSION(4, 0, 0)
 		#include <nautilus-extension.h>
@@ -47,7 +49,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <gio/gio.h>
-#include <gtk/gtk.h>
 
 #include "properties.h"
 #include "properties-list.h"
