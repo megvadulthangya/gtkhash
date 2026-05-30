@@ -1201,6 +1201,16 @@ static void test_init(void)
 static void run_gtk_subprocess_test(const char *name, int *argc, char ***argv)
 {
 	gtk_test_init(argc, argv);
+
+	/*
+	 * Build the test data files that the subprocess tests will later
+	 * access via g_test_get_filename().  Without these calls the test
+	 * functions will abort because the file paths are unresolved.
+	 */
+	g_test_build_filename(G_TEST_BUILT, "10M.bytes", NULL);
+	g_test_build_filename(G_TEST_BUILT, "0.bytes", NULL);
+	g_test_build_filename(G_TEST_BUILT, "test.md5sum", NULL);
+
 	hash_init();
 
 	/* Load test‑specific UI resource before gui_init() */
