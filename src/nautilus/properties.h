@@ -32,6 +32,7 @@
 
 struct page_s {
     GSettings *settings;
+    GSettings *prefs;
     char *uri;
     GtkWidget *box, *hbox_inputs;
     GtkProgressBar *progressbar;
@@ -41,9 +42,12 @@ struct page_s {
 
 #if GTK_CHECK_VERSION(4, 0, 0)
     GtkPopoverMenu *menu;
+    GMenuModel *menu_model;
     GtkWidget *menuitem_copy;
     GtkCheckButton *menuitem_show_funcs;
     GtkGestureClick *treeview_gesture;
+    GtkGesture *gesture;
+    GSimpleActionGroup *action_group;
 #else
     GtkMenu *menu;
     GtkMenuItem *menuitem_copy;
