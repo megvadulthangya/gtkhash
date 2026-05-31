@@ -587,8 +587,16 @@ static GList *gtkhash_properties_get_models(
     if (!page)
         return NULL;
 
+    /* Wrap the page box in a NautilusPropertiesItem */
+    NautilusPropertiesItem *item = nautilus_properties_item_new(page->box,
+        NULL, NULL, NULL);
+    g_object_ref(page->box); /* keep alive as long as the item exists */
+    GList *items = g_list_append(NULL, item);
+    g_object_unref(item);
+
     NautilusPropertiesModel *model = nautilus_properties_model_new(
-        _("Checksums"), page->box);
+        _("Checksums"), items);
+    g_object_ref(page->box); /* already held, ensure page->box is valid */
 
     GList *models = g_list_append(NULL, model);
     return models;
