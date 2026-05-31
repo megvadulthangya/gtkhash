@@ -859,9 +859,6 @@ PUBLIC void thunar_extension_list_types(const GType **types, int *num_types);
 PUBLIC void thunar_extension_list_types(const GType **types, int *num_types)
 #endif
 {
-    static GType type_list[1];
-
-    type_list[0] = page_type;
-    *types = type_list;
-    *num_types = G_N_ELEMENTS(type_list);
+    *types = &page_type;
+    *num_types = 1;
 }
