@@ -574,31 +574,9 @@ static GList *gtkhash_properties_get_models(
     G_GNUC_UNUSED NautilusPropertiesModelProvider *provider,
     GList *files)
 {
-    /* Only display page for a single file */
-    if (!files || files->next)
-        return NULL;
-
-    NautilusFileInfo *file = NAUTILUS_FILE_INFO(files->data);
-    if (nautilus_file_info_get_file_type(file) != G_FILE_TYPE_REGULAR)
-        return NULL;
-
-    char *uri = nautilus_file_info_get_uri(file);
-    struct page_s *page = gtkhash_properties_new_page(uri);
-    if (!page)
-        return NULL;
-
-    /* Create a NautilusPropertiesItem that embeds the custom widget */
-    NautilusPropertiesItem *item = nautilus_properties_item_new_widget(page->box);
-    GList *items = g_list_append(NULL, item);
-    g_object_unref(item); /* the list holds the ref now */
-
-    /* Create the model with the list of items */
-    NautilusPropertiesModel *model = nautilus_properties_model_new(
-        _("Checksums"), items);
-    /* items list ownership transferred to the model */
-
-    GList *models = g_list_append(NULL, model);
-    return models;
+    /* Nautilus 4 custom properties page is not supported;
+     * return NULL to effectively disable the extension for GTK4. */
+    return NULL;
 }
 #else
 static GList *gtkhash_properties_get_pages(
