@@ -53,41 +53,6 @@ static void nls_init(void)
 }
 #endif
 
-/* Recursively collect regular files from a GFile (including directories) */
-static GSList *
-uri_digest_list_from_files_recursive(GFile *file)
-{
-    GSList *uris = NULL;
-
-    if (!file)
-        return NULL;
-
-    GFileType type = g_file_query_file_type(file, G_FILE_QUERY_INFO_NONE, NULL);
-    if (type == G_FILE_TYPE_DIRECTORY) {
-        GFileEnumerator *enumerator = g_file_enumerate_children(file,
-            G_FILE_ATTRIBUTE_STANDARD_NAME "," G_FILE_ATTRIBUTE_STANDARD_TYPE,
-            G_FILE_QUERY_INFO_NONE, NULL, NULL);
-        if (enumerator) {
-            GFileInfo *info;
-            while ((info = g_file_enumerator_next_file(enumerator, NULL, NULL))) {
-                GFile *child = g_file_get_child(file,
-                    g_file_info_get_name(info));
-                GSList *child_uris = uri_digest_list_from_files_recursive(child);
-                uris = g_slist_concat(uris, child_uris);
-                g_object_unref(child);
-                g_object_unref(info);
-            }
-            g_file_enumerator_close(enumerator, NULL, NULL);
-            g_object_unref(enumerator);
-        }
-    } else if (type == G_FILE_TYPE_REGULAR) {
-        char *uri = g_file_get_uri(file);
-        uris = g_slist_prepend(uris, uri);
-    }
-
-    return uris;
-}
-
 #if GTK_CHECK_VERSION(4, 0, 0)
 static void on_startup(GtkApplication *app, gpointer user_data)
 {

@@ -21,6 +21,7 @@
 #define GTKHASH_URI_DIGEST_H
 
 #include <glib.h>
+#include <gio/gio.h>
 
 struct uri_digest_s {
 	char *uri;
@@ -33,5 +34,7 @@ GSList *uri_digest_list_from_uri_list(GSList *uris);
 GSList *uri_digest_list_from_uri_strv(char **uris);
 void uri_digest_list_free(GSList *ud_list);
 void uri_digest_list_free_full(GSList *ud_list);
+
+GSList *uri_digest_list_from_files_recursive(GFile *file);
 
 #endif
