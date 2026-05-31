@@ -386,8 +386,11 @@ static void gtkhash_properties_free_page(struct page_s *page)
 #if !GTK_CHECK_VERSION(4, 0, 0)
     g_object_unref(page->menu);
 #else
+    if (page->gesture) {
+        g_signal_handlers_disconnect_by_data(page->gesture, page);
+        page->gesture = NULL;
+    }
     g_clear_object(&page->menu_model);
-    g_clear_object(&page->gesture);
     g_clear_object(&page->action_group);
 #endif
     g_object_unref(page->box);
@@ -580,9 +583,17 @@ static GList *gtkhash_properties_get_models(
 }
 
 static void
-gtkhash_properties_menu_item_activate (NautilusMenuItem *item,
-                                       GList            *files)
+files_copy_free (gpointer data, GClosure *closure)
 {
+    g_list_free_full (data, g_object_unref);
+}
+
+static void
+gtkhash_properties_menu_item_activate (NautilusMenuItem *item,
+                                       gpointer           user_data)
+{
+    GList *files = user_data;
+
     gchar *exec = g_find_program_in_path ("gtkhash");
     if (!exec)
         return;
@@ -628,7 +639,7 @@ gtkhash_properties_get_file_items (NautilusMenuProvider *provider,
     g_signal_connect_data (item, "activate",
                            G_CALLBACK (gtkhash_properties_menu_item_activate),
                            files_copy,
-                           (GClosureNotify) g_list_free_full, 0);
+                           files_copy_free, 0);
     items = g_list_append (items, item);
     return items;
 }
