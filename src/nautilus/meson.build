@@ -55,10 +55,18 @@ endif
 foreach extension : extensions
     name = extension.get('name')
 
+    extra_symbols = ''
+    if name == 'nautilus' and gtk_version == '4'
+        extra_symbols = '    g_module_check_init;\n    g_module_unload;'
+    endif
+
     extension_map_file = configure_file(
         input:  'extension.map.in',
         output: 'extension_@0@.map'.format(name),
-        configuration: { 'symbol_prefix': extension.get('symbol_prefix')},
+        configuration: {
+            'symbol_prefix': extension.get('symbol_prefix'),
+            'extra_symbols': extra_symbols,
+        },
     )
 
     shared_library('gtkhash-properties-@0@'.format(name),

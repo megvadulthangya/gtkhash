@@ -862,3 +862,19 @@ PUBLIC void thunar_extension_list_types(const GType **types, int *num_types)
     *types = &page_type;
     *num_types = 1;
 }
+
+#if defined(IN_NAUTILUS_EXTENSION) && GTK_CHECK_VERSION(4, 0, 0)
+    #include <gmodule.h>
+
+    PUBLIC const gchar *g_module_check_init(GModule *module);
+    PUBLIC const gchar *g_module_check_init(GModule *module)
+    {
+        return NULL;
+    }
+
+    PUBLIC void g_module_unload(GModule *module);
+    PUBLIC void g_module_unload(GModule *module)
+    {
+        nautilus_module_shutdown();
+    }
+#endif

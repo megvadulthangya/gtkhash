@@ -1,6 +1,7 @@
 {
 global:
     @symbol_prefix@*;
+@extra_symbols@
 local:
     *;
 };
