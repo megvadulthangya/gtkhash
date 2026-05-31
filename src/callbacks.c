@@ -49,19 +49,6 @@ static void on_dialog_combobox_changed(void);
 #if GTK_CHECK_VERSION(4,0,0)
 /* GTK4 signal handler wrappers to match strict callback signatures */
 
-static void on_toolbutton_add_clicked_wrapper(GtkButton *button, gpointer user_data) {
-    (void)button; (void)user_data;
-    on_toolbutton_add_clicked();
-}
-static void on_toolbutton_remove_clicked_wrapper(GtkButton *button, gpointer user_data) {
-    (void)button; (void)user_data;
-    list_remove_selection();
-}
-static void on_toolbutton_clear_clicked_wrapper(GtkButton *button, gpointer user_data) {
-    (void)button; (void)user_data;
-    list_clear();
-}
-
 static void on_togglebutton_hmac_file_toggled_wrapper(GtkToggleButton *togglebutton, gpointer user_data) {
     (void)togglebutton; (void)user_data;
     on_togglebutton_hmac_file_toggled();
@@ -118,8 +105,6 @@ static void on_dialog_combobox_changed_wrapper(GtkComboBox *widget, gpointer use
 }
 
 static void on_filechooserbutton_clicked(GtkButton *button, gpointer user_data);
-
-static void on_dialog_delete_event_wrapper(GtkWindow *window, gpointer user_data);
 #endif
 
 static bool on_window_delete_event(void)
@@ -1224,10 +1209,6 @@ void callbacks_init(void)
     CON(gui.toolbutton_add,                 "clicked",             on_toolbutton_add_clicked);
     CON(gui.toolbutton_remove,              "clicked",             list_remove_selection);
     CON(gui.toolbutton_clear,               "clicked",             list_clear);
-#else
-    g_signal_connect(gui.toolbutton_add, "clicked", G_CALLBACK(on_toolbutton_add_clicked_wrapper), NULL);
-    g_signal_connect(gui.toolbutton_remove, "clicked", G_CALLBACK(on_toolbutton_remove_clicked_wrapper), NULL);
-    g_signal_connect(gui.toolbutton_clear, "clicked", G_CALLBACK(on_toolbutton_clear_clicked_wrapper), NULL);
 #endif
 
 #if !GTK_CHECK_VERSION(4,0,0)
@@ -1246,10 +1227,14 @@ void callbacks_init(void)
     }
 #endif
 #if GTK_CHECK_VERSION(4,0,0)
-    GtkGesture *treeview_gesture = gtk_gesture_click_new();
-    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(treeview_gesture), 0);
-    g_signal_connect(treeview_gesture, "pressed", G_CALLBACK(on_treeview_click_gesture_pressed), NULL);
-    gtk_widget_add_controller(GTK_WIDGET(gui.treeview), GTK_EVENT_CONTROLLER(treeview_gesture));
+    {
+        GtkGesture *treeview_gesture = gtk_gesture_click_new();
+        if (treeview_gesture) {
+            gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(treeview_gesture), 0);
+            g_signal_connect(treeview_gesture, "pressed", G_CALLBACK(on_treeview_click_gesture_pressed), NULL);
+            gtk_widget_add_controller(GTK_WIDGET(gui.treeview), GTK_EVENT_CONTROLLER(treeview_gesture));
+        }
+    }
 #else
     CON(gui.treeview,                       "button-press-event",  on_treeview_button_press_event);
     CON(gui.treeview,                       "drag-data-received",  on_treeview_drag_data_received);
