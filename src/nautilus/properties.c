@@ -617,11 +617,11 @@ gtkhash_properties_menu_item_activate (NautilusMenuItem *item,
 
 static GList *
 gtkhash_properties_get_file_items (NautilusMenuProvider *provider,
-                                   GtkWidget            *window,
                                    GList                *files)
 {
     GList *items = NULL;
-    NautilusMenuItem *item = nautilus_menu_item_new (_("GtkHash"), NULL, NULL);
+    NautilusMenuItem *item = nautilus_menu_item_new ("GtkHash::menu_item",
+                                                     _("GtkHash"), NULL, NULL);
 
     /* Copy files list to ensure it stays alive when the signal fires */
     GList *files_copy = g_list_copy_deep (files, (GCopyFunc) g_object_ref, NULL);
