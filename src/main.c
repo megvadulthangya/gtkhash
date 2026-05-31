@@ -33,6 +33,7 @@
 #include "prefs.h"
 #include "check.h"
 #include "callbacks.h"
+#include "uri-digest.h"
 
 #if ENABLE_NLS
 static void nls_init(void)
@@ -53,7 +54,7 @@ static void nls_init(void)
 #endif
 
 #if GTK_CHECK_VERSION(4, 0, 0)
-static void on_activate(GtkApplication *app, gpointer user_data)
+static void on_startup(GtkApplication *app, gpointer user_data)
 {
     gui_init();
     prefs_init();
@@ -61,7 +62,6 @@ static void on_activate(GtkApplication *app, gpointer user_data)
 
     opts_postinit();
 
-    /* Ensure a valid default view if none set by prefs or command line */
     if (!GUI_VIEW_IS_VALID(gui.view)) {
         gui_set_view(GUI_VIEW_FILE);
         gui_update();
@@ -69,6 +69,31 @@ static void on_activate(GtkApplication *app, gpointer user_data)
 
     gui_set_application(app);
     callbacks_init(app);
+}
+
+static void on_activate(GtkApplication *app, gpointer user_data)
+{
+    gtk_window_present(GTK_WINDOW(gui.window));
+}
+
+static void on_open(GtkApplication *app, GFile **files, gint n_files,
+    const gchar *hint, gpointer user_data)
+{
+    GSList *ud_list = NULL;
+
+    for (gint i = 0; i < n_files; i++) {
+        char *uri = g_file_get_uri(files[i]);
+        ud_list = g_slist_prepend(ud_list, uri_digest_new(uri, NULL));
+    }
+    ud_list = g_slist_reverse(ud_list);
+
+    guint added = gui_add_ud_list(ud_list, GUI_VIEW_INVALID);
+    uri_digest_list_free_full(ud_list);
+
+    gui_update();
+
+    if (added && gui_get_state() == GUI_STATE_IDLE)
+        gui_start_hash();
 
     gtk_window_present(GTK_WINDOW(gui.window));
 }
@@ -86,8 +111,10 @@ int main(int argc, char **argv)
 
 #if GTK_CHECK_VERSION(4, 0, 0)
     GtkApplication *app = gtk_application_new("org.gtkhash.gtkhash",
-        G_APPLICATION_FLAGS_NONE);
+        G_APPLICATION_HANDLES_OPEN);
+    g_signal_connect(app, "startup", G_CALLBACK(on_startup), NULL);
     g_signal_connect(app, "activate", G_CALLBACK(on_activate), NULL);
+    g_signal_connect(app, "open", G_CALLBACK(on_open), NULL);
     int status = g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
 

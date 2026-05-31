@@ -1234,6 +1234,11 @@ void gui_set_state(const enum gui_state_e state)
     gui_menuitem_save_as_set_sensitive();
 }
 
+enum gui_state_e gui_get_state(void)
+{
+    return gui_priv.state;
+}
+
 bool gui_is_maximised(void)
 {
 #if GTK_CHECK_VERSION(4, 0, 0)
