@@ -27,117 +27,128 @@
 #include "hash/hash-func.h"
 
 enum gui_view_e {
-    GUI_VIEW_INVALID = -1,
-    GUI_VIEW_FILE,
-    GUI_VIEW_TEXT,
-    GUI_VIEW_FILE_LIST
+	GUI_VIEW_INVALID = -1,
+	GUI_VIEW_FILE,
+	GUI_VIEW_TEXT,
+	GUI_VIEW_FILE_LIST
 };
 #define GUI_VIEW_IS_VALID(view) ((view) >= GUI_VIEW_FILE)
 
 enum gui_state_e {
-    GUI_STATE_INVALID = -1,
-    GUI_STATE_IDLE,
-    GUI_STATE_BUSY
+	GUI_STATE_INVALID = -1,
+	GUI_STATE_IDLE,
+	GUI_STATE_BUSY
 };
 #define GUI_STATE_IS_VALID(state) ((state) >= GUI_STATE_IDLE)
 
 struct hash_widget_s {
-    GtkWidget *button;
-    GtkWidget *label_file;
-    GtkWidget *label_text;
-    GtkWidget *entry_file;
-    GtkWidget *entry_text;
+	GtkWidget *button;
+	GtkWidget *label_file;
+	GtkWidget *label_text;
+	GtkWidget *entry_file;
+	GtkWidget *entry_text;
 #if !GTK_CHECK_VERSION(4, 0, 0)
-    GtkWidget *menuitem_treeview_copy;
+	GtkMenuItem *menuitem_treeview_copy;
 #endif
 };
 
 struct gui_s {
-    GtkWindow *window;
+	GtkWindow *window;
 
 #if !GTK_CHECK_VERSION(4, 0, 0)
-    GtkWidget *menuitem_open;
-    GtkWidget *menuitem_save_as;
-    GtkWidget *menuitem_quit;
-    GtkWidget *menuitem_edit;
-    GtkWidget *menuitem_cut;
-    GtkWidget *menuitem_copy;
-    GtkWidget *menuitem_paste;
-    GtkWidget *menuitem_delete;
-    GtkWidget *menuitem_select_all;
-    GtkWidget *menuitem_prefs;
-    GtkWidget *radiomenuitem_file;
-    GtkWidget *radiomenuitem_text;
-    GtkWidget *radiomenuitem_file_list;
-    GtkWidget *menuitem_about;
+	GtkMenuItem *menuitem_open;
+	GtkMenuItem *menuitem_save_as;
+	GtkMenuItem *menuitem_quit;
+	GtkMenuItem *menuitem_edit;
+	GtkMenuItem *menuitem_cut;
+	GtkMenuItem *menuitem_copy;
+	GtkMenuItem *menuitem_paste;
+	GtkMenuItem *menuitem_delete;
+	GtkMenuItem *menuitem_select_all;
+	GtkMenuItem *menuitem_prefs;
+	GtkRadioMenuItem *radiomenuitem_file;
+	GtkRadioMenuItem *radiomenuitem_text;
+	GtkRadioMenuItem *radiomenuitem_file_list;
+	GtkMenuItem *menuitem_about;
 #endif
 
-    // Toolbar
-    GtkWidget *toolbar;
-    GtkWidget *toolbutton_add;
-    GtkWidget *toolbutton_remove;
-    GtkWidget *toolbutton_clear;
-
-    // Containers
-    GtkBox *vbox_single;
-    GtkBox *vbox_list;
-    GtkBox *hbox_input;
-    GtkBox *hbox_output;
-    GtkBox *vbox_outputlabels;
-    GtkBox *vbox_digests_file;
-    GtkBox *vbox_digests_text;
-
-    // Inputs
-    GtkWidget *filechooserbutton;
-    GtkEntry *entry_text;
-    GtkEntry *entry_check_file;
-    GtkEntry *entry_check_text;
-    GtkToggleButton *togglebutton_hmac_file;
-    GtkToggleButton *togglebutton_hmac_text;
-    GtkEntry *entry_hmac_file;
-    GtkEntry *entry_hmac_text;
-
-    // Labels
-    GtkLabel *label_file;
-    GtkLabel *label_text;
-
-    // Tree View
-    GtkTreeView *treeview;
-    GtkTreeSelection *treeselection;
-#if !GTK_CHECK_VERSION(4, 0, 0)
-    GtkMenu *menu_treeview;
-    GtkWidget *menuitem_treeview_add;
-    GtkWidget *menuitem_treeview_remove;
-    GtkWidget *menuitem_treeview_clear;
-    GtkMenu *menu_treeview_copy;
-    GtkWidget *menuitem_treeview_copy;
-    GtkWidget *menuitem_treeview_show_toolbar;
+	// Toolbar
+#if GTK_CHECK_VERSION(4, 0, 0)
+	GtkWidget *toolbar;
+	GtkWidget *toolbutton_add;
+	GtkWidget *toolbutton_remove;
+	GtkWidget *toolbutton_clear;
 #else
-    GObject *menu_treeview; /* GMenu or GtkPopoverMenu */
+	GtkToolbar *toolbar;
+	GtkToolButton *toolbutton_add;
+	GtkToolButton *toolbutton_remove;
+	GtkToolButton *toolbutton_clear;
 #endif
 
-    // Buttons
-    GtkSeparator *hseparator_buttons;
-    GtkButton *button_hash;
-    GtkButton *button_stop;
+	// Containers
+	GtkBox *vbox_single;
+	GtkBox *vbox_list;
+	GtkBox *hbox_input;
+	GtkBox *hbox_output;
+	GtkBox *vbox_outputlabels;
+	GtkBox *vbox_digests_file;
+	GtkBox *vbox_digests_text;
 
-    // Progress Bar
-    GtkProgressBar *progressbar;
+	// Inputs
+#if GTK_CHECK_VERSION(4, 0, 0)
+	GtkWidget *filechooserbutton;
+#else
+	GtkFileChooserButton *filechooserbutton;
+#endif
+	GtkEntry *entry_text;
+	GtkEntry *entry_check_file;
+	GtkEntry *entry_check_text;
+	GtkToggleButton *togglebutton_hmac_file;
+	GtkToggleButton *togglebutton_hmac_text;
+	GtkEntry *entry_hmac_file;
+	GtkEntry *entry_hmac_text;
 
-    // Dialog
-    GtkDialog *dialog;
-    GtkGrid *dialog_grid;
-    GtkWidget *dialog_togglebutton_show_hmac;
-    GtkComboBox *dialog_combobox;
-    GtkButton *dialog_button_close;
+	// Labels
+	GtkLabel *label_file;
+	GtkLabel *label_text;
 
-    // Hash
-    struct hash_widget_s hash_widgets[HASH_FUNCS_N];
-    enum gui_view_e view;
+	// Tree View
+	GtkTreeView *treeview;
+	GtkTreeSelection *treeselection;
+#if !GTK_CHECK_VERSION(4, 0, 0)
+	GtkMenu *menu_treeview;
+	GtkMenuItem *menuitem_treeview_add;
+	GtkMenuItem *menuitem_treeview_remove;
+	GtkMenuItem *menuitem_treeview_clear;
+	GtkMenu *menu_treeview_copy;
+	GtkMenuItem *menuitem_treeview_copy;
+	GtkCheckMenuItem *menuitem_treeview_show_toolbar;
+#else
+	GObject *menu_treeview; /* GMenu or GtkPopoverMenu */
+#endif
 
-    // GTK3-specific
-    GtkListStore *liststore;
-    GtkTreeModel *treemodel;
+	// Buttons
+	GtkSeparator *hseparator_buttons;
+	GtkButton *button_hash;
+	GtkButton *button_stop;
+
+	// Progress Bar
+	GtkProgressBar *progressbar;
+
+	// Dialog
+	GtkDialog *dialog;
+	GtkGrid *dialog_grid;
+	GtkWidget *dialog_togglebutton_show_hmac;
+	GtkComboBox *dialog_combobox;
+	GtkButton *dialog_button_close;
+
+	// Hash
+	struct hash_widget_s hash_widgets[HASH_FUNCS_N];
+	enum gui_view_e view;
+
+	// GTK3-specific
+	GtkListStore *liststore;
+	GtkTreeModel *treemodel;
 };
 
 extern struct gui_s gui;
