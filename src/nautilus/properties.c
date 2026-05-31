@@ -578,7 +578,70 @@ static GList *gtkhash_properties_get_models(
      * return NULL to effectively disable the extension for GTK4. */
     return NULL;
 }
-#else
+
+static void
+gtkhash_properties_menu_item_activate (NautilusMenuItem *item,
+                                       GList            *files)
+{
+    gchar *exec = g_find_program_in_path ("gtkhash");
+    if (!exec)
+        return;
+
+    GPtrArray *args = g_ptr_array_new ();
+    g_ptr_array_add (args, exec);
+
+    for (GList *l = files; l != NULL; l = l->next) {
+        NautilusFileInfo *info = NAUTILUS_FILE_INFO (l->data);
+        const char *uri = nautilus_file_info_get_uri (info);
+        if (g_strcmp0 (nautilus_file_info_get_uri_scheme (info), "file") == 0) {
+            gchar *path = g_filename_from_uri (uri, NULL, NULL);
+            if (path) {
+                g_ptr_array_add (args, path);
+            }
+        }
+    }
+
+    g_ptr_array_add (args, NULL);
+
+    GError *error = NULL;
+    if (!g_spawn_async (NULL, (gchar **) args->pdata, NULL,
+                        G_SPAWN_SEARCH_PATH | G_SPAWN_DO_NOT_REAP_CHILD,
+                        NULL, NULL, NULL, &error)) {
+        g_warning ("Failed to launch gtkhash: %s", error->message);
+        g_error_free (error);
+    }
+
+    g_free (exec);
+    g_ptr_array_free (args, TRUE);
+}
+
+static GList *
+gtkhash_properties_get_file_items (NautilusMenuProvider *provider,
+                                   GtkWidget            *window,
+                                   GList                *files)
+{
+    GList *items = NULL;
+    NautilusMenuItem *item = nautilus_menu_item_new (_("GtkHash"), NULL, NULL);
+
+    /* Copy files list to ensure it stays alive when the signal fires */
+    GList *files_copy = g_list_copy_deep (files, (GCopyFunc) g_object_ref, NULL);
+    g_signal_connect_data (item, "activate",
+                           G_CALLBACK (gtkhash_properties_menu_item_activate),
+                           files_copy,
+                           (GClosureNotify) g_list_free_full, 0);
+    items = g_list_append (items, item);
+    return items;
+}
+
+static void
+gtkhash_properties_menu_iface_init (NautilusMenuProviderInterface *iface,
+                                    gpointer data)
+{
+    iface->get_file_items = gtkhash_properties_get_file_items;
+}
+#endif
+
+#if !defined(IN_NAUTILUS_EXTENSION) || !GTK_CHECK_VERSION(4, 0, 0)
 static GList *gtkhash_properties_get_pages(
 #if defined(IN_NAUTILUS_EXTENSION)
     G_GNUC_UNUSED NautilusPropertyPageProvider *provider,
@@ -704,6 +767,14 @@ static void gtkhash_properties_register_type(GTypeModule *module)
 #if defined(IN_NAUTILUS_EXTENSION) && GTK_CHECK_VERSION(4, 0, 0)
     g_type_module_add_interface(module, page_type,
         NAUTILUS_TYPE_PROPERTIES_MODEL_PROVIDER, &pp_iface_info);
+
+    const GInterfaceInfo menu_iface_info = {
+        (GInterfaceInitFunc) gtkhash_properties_menu_iface_init,
+        (GInterfaceFinalizeFunc) NULL,
+        NULL
+    };
+    g_type_module_add_interface (module, page_type,
+        NAUTILUS_TYPE_MENU_PROVIDER, &menu_iface_info);
 #else
     g_type_module_add_interface(module, page_type,
 #if defined(IN_NAUTILUS_EXTENSION)
