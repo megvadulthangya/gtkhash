@@ -662,7 +662,8 @@ static void on_treeselection_changed(void)
 {
     const int rows = gtk_tree_selection_count_selected_rows(gui.treeselection);
 
-    gtk_widget_set_sensitive(GTK_WIDGET(gui.toolbutton_remove), (rows > 0));
+    if (gui.toolbutton_remove != NULL)
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.toolbutton_remove), (rows > 0));
 }
 
 #if GTK_CHECK_VERSION(4,0,0)
@@ -1229,7 +1230,7 @@ void callbacks_init(void)
 #if GTK_CHECK_VERSION(4,0,0)
     {
         GtkGesture *treeview_gesture = gtk_gesture_click_new();
-        if (treeview_gesture) {
+        if (treeview_gesture != NULL) {
             gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(treeview_gesture), 0);
             g_signal_connect(treeview_gesture, "pressed", G_CALLBACK(on_treeview_click_gesture_pressed), NULL);
             gtk_widget_add_controller(GTK_WIDGET(gui.treeview), GTK_EVENT_CONTROLLER(treeview_gesture));
