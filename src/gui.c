@@ -190,15 +190,6 @@ static void gui_init_objects(GtkBuilder *builder)
         "toolbutton_clear"));
 #endif
 
-#if GTK_CHECK_VERSION(4, 0, 0)
-    // Toolbar (box) and buttons
-    gui.toolbar = GTK_WIDGET(gui_get_object_required(builder, "toolbar"));
-    gui.toolbutton_add = GTK_WIDGET(gui_get_object_required(builder, "toolbutton_add"));
-    gui.toolbutton_remove = GTK_WIDGET(gui_get_object_required(builder, "toolbutton_remove"));
-    gui.toolbutton_clear = GTK_WIDGET(gui_get_object_required(builder, "toolbutton_clear"));
-    gtk_widget_set_visible(gui.toolbar, true);
-#endif
-
     // Containers
     gui.vbox_single = GTK_BOX(gui_get_object_required(builder,
         "vbox_single"));
