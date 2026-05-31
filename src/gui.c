@@ -942,7 +942,8 @@ void gui_update(void)
 #if GTK_CHECK_VERSION(4, 0, 0)
         gtk_widget_set_visible(GTK_WIDGET(gui.vbox_list), FALSE);
         gtk_widget_set_visible(GTK_WIDGET(gui.vbox_single), TRUE);
-        gtk_widget_set_visible(gui.toolbar, FALSE);
+        if (gui.toolbar)
+            gtk_widget_set_visible(gui.toolbar, FALSE);
 #else
         gtk_widget_hide(GTK_WIDGET(gui.toolbar));
         gtk_widget_hide(GTK_WIDGET(gui.vbox_list));
