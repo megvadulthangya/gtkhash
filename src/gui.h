@@ -42,20 +42,40 @@ enum gui_state_e {
 #define GUI_STATE_IS_VALID(state) ((state) >= GUI_STATE_IDLE)
 
 struct hash_widget_s {
-	GtkWidget *button;
-	GtkWidget *label_file;
-	GtkWidget *label_text;
-	GtkWidget *entry_file;
-	GtkWidget *entry_text;
+	GtkWidget *button;                       /* GtkCheckButton, used in both GTK3/4 */
+#if GTK_MAJOR_VERSION >= 4
+	GtkButton *label_file;                   /* GTK4: file view hash function labels are GtkButton */
+#else
+	GtkModelButton *label_file;              /* GTK3: file view hash function labels are GtkModelButton */
+#endif
+	GtkLabel *label_text;                    /* text view label */
+	GtkEntry *entry_file;                    /* file view digest entry */
+	GtkEntry *entry_text;                    /* text view digest entry */
 #if !GTK_CHECK_VERSION(4, 0, 0)
-	GtkMenuItem *menuitem_treeview_copy;
+	GtkMenuItem *menuitem_treeview_copy;     /* GTK3 only: treeview popup copy menu item */
 #endif
 };
 
 struct gui_s {
 	GtkWindow *window;
 
-#if !GTK_CHECK_VERSION(4, 0, 0)
+	/* Menu items – GTK3 uses specific types, GTK4 uses GtkWidget* */
+#if GTK_MAJOR_VERSION >= 4
+	GtkWidget *menuitem_open;
+	GtkWidget *menuitem_save_as;
+	GtkWidget *menuitem_quit;
+	GtkWidget *menuitem_edit;               /* needed for on_menuitem_edit_activate() */
+	GtkWidget *menuitem_cut;
+	GtkWidget *menuitem_copy;
+	GtkWidget *menuitem_paste;
+	GtkWidget *menuitem_delete;
+	GtkWidget *menuitem_select_all;
+	GtkWidget *menuitem_prefs;
+	GtkWidget *radiomenuitem_file;
+	GtkWidget *radiomenuitem_text;
+	GtkWidget *radiomenuitem_file_list;
+	GtkWidget *menuitem_about;
+#else
 	GtkMenuItem *menuitem_open;
 	GtkMenuItem *menuitem_save_as;
 	GtkMenuItem *menuitem_quit;
@@ -72,8 +92,8 @@ struct gui_s {
 	GtkMenuItem *menuitem_about;
 #endif
 
-	// Toolbar
-#if GTK_CHECK_VERSION(4, 0, 0)
+	/* Toolbar */
+#if GTK_MAJOR_VERSION >= 4
 	GtkWidget *toolbar;
 	GtkWidget *toolbutton_add;
 	GtkWidget *toolbutton_remove;
@@ -85,7 +105,7 @@ struct gui_s {
 	GtkToolButton *toolbutton_clear;
 #endif
 
-	// Containers
+	/* Containers */
 	GtkBox *vbox_single;
 	GtkBox *vbox_list;
 	GtkBox *hbox_input;
@@ -94,11 +114,11 @@ struct gui_s {
 	GtkBox *vbox_digests_file;
 	GtkBox *vbox_digests_text;
 
-	// Inputs
-#if GTK_CHECK_VERSION(4, 0, 0)
-	GtkWidget *filechooserbutton;
+	/* Inputs */
+#if GTK_MAJOR_VERSION >= 4
+	GtkWidget *filechooserbutton;            /* GTK4: generic button, no GtkFileChooserButton */
 #else
-	GtkFileChooserButton *filechooserbutton;
+	GtkFileChooserButton *filechooserbutton; /* GTK3: file chooser button */
 #endif
 	GtkEntry *entry_text;
 	GtkEntry *entry_check_file;
@@ -108,14 +128,19 @@ struct gui_s {
 	GtkEntry *entry_hmac_file;
 	GtkEntry *entry_hmac_text;
 
-	// Labels
+	/* Labels */
 	GtkLabel *label_file;
 	GtkLabel *label_text;
 
-	// Tree View
+	/* Tree View */
 	GtkTreeView *treeview;
 	GtkTreeSelection *treeselection;
-#if !GTK_CHECK_VERSION(4, 0, 0)
+
+	/* Treeview popup menu / context menu */
+#if GTK_MAJOR_VERSION >= 4
+	GObject *menu_treeview;                  /* GtkPopoverMenu or GMenu in GTK4 */
+	GtkWidget *menuitem_treeview_show_toolbar; /* used by GTK4 code */
+#else
 	GtkMenu *menu_treeview;
 	GtkMenuItem *menuitem_treeview_add;
 	GtkMenuItem *menuitem_treeview_remove;
@@ -123,36 +148,41 @@ struct gui_s {
 	GtkMenu *menu_treeview_copy;
 	GtkMenuItem *menuitem_treeview_copy;
 	GtkCheckMenuItem *menuitem_treeview_show_toolbar;
-#else
-	GObject *menu_treeview; /* GMenu or GtkPopoverMenu */
 #endif
 
-	// Buttons
+	/* Buttons */
 	GtkSeparator *hseparator_buttons;
 	GtkButton *button_hash;
 	GtkButton *button_stop;
 
-	// Progress Bar
+	/* Progress Bar */
 	GtkProgressBar *progressbar;
 
-	// Dialog
+	/* Preferences dialog */
 	GtkDialog *dialog;
 	GtkGrid *dialog_grid;
 	GtkWidget *dialog_togglebutton_show_hmac;
 	GtkComboBox *dialog_combobox;
 	GtkButton *dialog_button_close;
 
-	// Hash
+	/* Hash widgets for each function */
 	struct hash_widget_s hash_widgets[HASH_FUNCS_N];
 	enum gui_view_e view;
 
-	// GTK3-specific
+	/* GTK3-specific list model (used unconditionally for both) */
 	GtkListStore *liststore;
 	GtkTreeModel *treemodel;
 };
 
 extern struct gui_s gui;
 
+/* GTK4-only file chooser helper state */
+#if GTK_CHECK_VERSION(4, 0, 0)
+extern GFile *gui_filechooser_selected_file;
+extern char *gui_filechooser_selected_uri;
+#endif
+
+/* Function prototypes */
 void gui_init(void);
 void gui_set_view(const enum gui_view_e view);
 void gui_enable_hash_func(const enum hash_func_e id);
