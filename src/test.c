@@ -1131,17 +1131,29 @@ static void test_digest_format_base64()
 }
 
 /*
- * TODO/FIXME: Temporary workaround for GTK4 CLI-mode initialization crash.
- * The following five tests cause SIGABRT/TIMEOUT during GTK4 builds due to
- * GL/GUI initialization issues in CLI mode. They are registered with a skip
- * function so the rest of the test suite can continue to run.
- * Re-enable these tests once the CLI-mode/GL initialization is fixed.
+ * Temporary workaround for GTK4 CLI-mode initialization crash.
+ * The tests below cause SIGABRT/TIMEOUT when run under GTK4 because
+ * they trigger GL/GUI initialization that fails in a headless/CLI
+ * environment.  They are unconditionally skipped for now.
+ *
+ * TODO/FIXME: Re‑enable once the underlying GTK4 CLI‑mode/GL
+ * initialization bug has been fixed.
  */
 #if GTK_MAJOR_VERSION >= 4
-static void test_skip_gtk4_cli_crash(void)
-{
-	g_test_skip("Temporarily skipped: GTK4 CLI-mode GL/GUI initialization crash (SIGABRT/TIMEOUT). "
-	            "TODO/FIXME: Re-enable once CLI-mode/GL initialization is fixed.");
+static void test_skip_opt_file(void) {
+	g_test_skip("GTK4 CLI-mode crash workaround: /opt/file");
+}
+static void test_skip_opt_file_list(void) {
+	g_test_skip("GTK4 CLI-mode crash workaround: /opt/file-list");
+}
+static void test_skip_opt_check_text(void) {
+	g_test_skip("GTK4 CLI-mode crash workaround: /opt/check/text");
+}
+static void test_skip_opt_check_file(void) {
+	g_test_skip("GTK4 CLI-mode crash workaround: /opt/check/file");
+}
+static void test_skip_digest_format_base64(void) {
+	g_test_skip("GTK4 CLI-mode crash workaround: /digest-format/base64");
 }
 #endif
 
@@ -1190,17 +1202,11 @@ static void test_init(void)
 #else
 	g_test_add_func("/opt/help", test_opt_help_gtk4);
 	g_test_add_func("/opt/version", test_opt_version_gtk4);
-	/*
-	 * TODO/FIXME: The following four option tests are temporarily skipped
-	 * in GTK4 builds because they crash (SIGABRT/TIMEOUT) due to GL/GUI
-	 * initialization issues in CLI mode. Re-enable once the CLI-mode/GL
-	 * initialization is fixed.
-	 */
-	g_test_add_func("/opt/check/text", test_skip_gtk4_cli_crash);
-	g_test_add_func("/opt/check/file", test_skip_gtk4_cli_crash);
+	g_test_add_func("/opt/check/text", test_skip_opt_check_text);
+	g_test_add_func("/opt/check/file", test_skip_opt_check_file);
 	g_test_add_func("/opt/function", test_opt_function_gtk4);
-	g_test_add_func("/opt/file", test_skip_gtk4_cli_crash);
-	g_test_add_func("/opt/file-list", test_skip_gtk4_cli_crash);
+	g_test_add_func("/opt/file", test_skip_opt_file);
+	g_test_add_func("/opt/file-list", test_skip_opt_file_list);
 #endif
 
 	/* Test digest formats */
@@ -1209,12 +1215,7 @@ static void test_init(void)
 	g_test_add_func("/digest-format/hex-lower", test_digest_format_hex_lower);
 	g_test_add_func("/digest-format/hex-upper", test_digest_format_hex_upper);
 #else
-	/*
-	 * TODO/FIXME: The base64 digest format test is temporarily skipped
-	 * in GTK4 builds due to GL/GUI initialization crash in CLI mode.
-	 * Re-enable once the CLI-mode/GL initialization is fixed.
-	 */
-	g_test_add_func("/digest-format/base64", test_skip_gtk4_cli_crash);
+	g_test_add_func("/digest-format/base64", test_skip_digest_format_base64);
 	g_test_add_func("/digest-format/hex-lower", test_digest_format_hex_lower_gtk4);
 	g_test_add_func("/digest-format/hex-upper", test_digest_format_hex_upper_gtk4);
 #endif
