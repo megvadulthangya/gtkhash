@@ -33,6 +33,7 @@
 #include "prefs.h"
 #include "check.h"
 #include "callbacks.h"
+#include "list.h"
 #include "uri-digest.h"
 
 #if ENABLE_NLS
@@ -79,27 +80,58 @@ static void on_activate(GtkApplication *app, gpointer user_data)
 static void on_open(GtkApplication *app, GFile **files, gint n_files,
     const gchar *hint, gpointer user_data)
 {
-    GSList *ud_list = NULL;
-
+    /* Collect new URIs from the provided files */
+    GSList *new_uris = NULL;
     for (gint i = 0; i < n_files; i++) {
-        GSList *file_uris = uri_digest_list_from_files_recursive(files[i]);
-        GSList *l;
-        for (l = file_uris; l; l = l->next) {
-            char *uri = l->data;
-            ud_list = g_slist_prepend(ud_list, uri_digest_new(uri, NULL));
-        }
-        g_slist_free(file_uris);
+        GSList *f_uris = uri_digest_list_from_files_recursive(files[i]);
+        new_uris = g_slist_concat(new_uris, f_uris);
     }
 
-    ud_list = g_slist_reverse(ud_list);
+    if (!new_uris)
+        return;
 
-    guint added = gui_add_ud_list(ud_list, GUI_VIEW_INVALID);
-    uri_digest_list_free_full(ud_list);
+    /* Collect URIs currently shown in the UI so they aren't lost */
+    GSList *existing_uris = NULL;
+    if (gui.view == GUI_VIEW_FILE) {
+        char *uri = gui_filechooserbutton_get_uri();
+        if (uri)
+            existing_uris = g_slist_prepend(existing_uris, uri);
+    } else if (gui.view == GUI_VIEW_FILE_LIST) {
+        for (unsigned int row = 0; row < list.rows; row++) {
+            char *uri = list_get_uri(row);
+            existing_uris = g_slist_prepend(existing_uris, uri);
+        }
+        existing_uris = g_slist_reverse(existing_uris);
+    }
 
-    gui_update();
+    /* Combine existing and new URIs */
+    GSList *all_uris = g_slist_concat(existing_uris, new_uris);
 
-    if (added && gui_get_state() == GUI_STATE_IDLE)
-        gui_start_hash();
+    /* Only apply the full UI update if the hashing engine is idle.
+     * While busy the view must not be changed. */
+    if (gui_get_state() == GUI_STATE_IDLE) {
+        /* Remove old single-file selection and list contents */
+        if (gui.view == GUI_VIEW_FILE_LIST)
+            list_clear();
+
+        /* Switch to list view to show everything together */
+        gui_set_view(GUI_VIEW_FILE_LIST);
+
+        /* Populate the list model */
+        for (GSList *l = all_uris; l; l = l->next)
+            list_append_row((const char *)l->data, NULL);
+
+        /* Free all URI strings and list nodes */
+        g_slist_free_full(all_uris, g_free);
+
+        gui_update();
+
+        if (gui_get_state() == GUI_STATE_IDLE)
+            gui_start_hash();
+    } else {
+        /* Just free the collected URIs – they will not be added now */
+        g_slist_free_full(all_uris, g_free);
+    }
 
     gtk_window_present(GTK_WINDOW(gui.window));
 }
