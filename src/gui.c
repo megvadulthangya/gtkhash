@@ -270,7 +270,7 @@ static void gui_init_objects(GtkBuilder *builder)
         "menu_treeview_copy"));
     gui.menuitem_treeview_copy = GTK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_treeview_copy"));
-    gui.menuitem_treeview_show_toolbar = GTK_MENU_ITEM(gui_get_object_required(builder,
+    gui.menuitem_treeview_show_toolbar = GTK_CHECK_MENU_ITEM(gui_get_object_required(builder,
         "menuitem_treeview_show_toolbar"));
 #endif
 
@@ -480,8 +480,8 @@ static char *gui_try_uri(const char *uri)
         g_object_unref(info);
         if (!can_read)
             error_str = g_strdup(g_strerror(EACCES));
-        else if (type == G_FILE_TYPE_DIRECTORY) // TODO
-            error_str = g_strdup(g_strerror(EISDIR));
+        else if (type == G_FILE_TYPE_DIRECTORY)
+            error_str = g_strdup(_("Not a regular file"));
         else if (type != G_FILE_TYPE_REGULAR)
             error_str = g_strdup(_("Not a regular file"));
     } else {

@@ -174,9 +174,17 @@ void opts_postinit(void)
 
 	if (opts.files) {
 		for (int i = 0; opts.files[i]; i++) {
-			struct uri_digest_s *ud =
-				uri_digest_new(filename_arg_to_uri(opts.files[i]), NULL);
-			ud_list = g_slist_prepend(ud_list, ud);
+			GFile *file = g_file_new_for_commandline_arg(opts.files[i]);
+			/* Recursively collect regular files */
+			GSList *uris = uri_digest_list_from_files_recursive(file);
+			GSList *l;
+			for (l = uris; l; l = l->next) {
+				char *uri = l->data;
+				struct uri_digest_s *ud = uri_digest_new(uri, NULL);
+				ud_list = g_slist_prepend(ud_list, ud);
+			}
+			g_slist_free(uris);
+			g_object_unref(file);
 		}
 	}
 
