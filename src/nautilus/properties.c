@@ -587,15 +587,15 @@ static GList *gtkhash_properties_get_models(
     if (!page)
         return NULL;
 
-    /* Create an item and attach the custom widget */
-    NautilusPropertiesItem *item = nautilus_properties_item_new(_("Checksums"), NULL);
-    nautilus_properties_item_set_widget(item, page->box);
-
+    /* Create a NautilusPropertiesItem that embeds the custom widget */
+    NautilusPropertiesItem *item = nautilus_properties_item_new_widget(page->box);
     GList *items = g_list_append(NULL, item);
-    g_object_unref(item); /* model will take ownership via list */
+    g_object_unref(item); /* the list holds the ref now */
 
-    NautilusPropertiesModel *model = nautilus_properties_model_new(_("Checksums"), items);
-    /* items list is now owned by the model */
+    /* Create the model with the list of items */
+    NautilusPropertiesModel *model = nautilus_properties_model_new(
+        _("Checksums"), items);
+    /* items list ownership transferred to the model */
 
     GList *models = g_list_append(NULL, model);
     return models;
