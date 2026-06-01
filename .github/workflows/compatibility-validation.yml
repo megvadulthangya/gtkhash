@@ -382,7 +382,8 @@ jobs:
           # GTK4 tests are executed with a single worker process.
           # Running Meson tests in parallel under Xvfb causes intermittent crashes and race-condition related failures.
           # Re-enable parallel execution only after GTK4 stability has been verified.
-
+          dbus-uuidgen --ensure
+          dbus-run-session -- \
           xvfb-run -s "-screen 0 800x600x24" \
             meson test -v -C build --num-processes 1
 
@@ -543,6 +544,7 @@ jobs:
           # GTK4 tests are executed with a single worker process.
           # Running Meson tests in parallel under Xvfb causes intermittent crashes and race-condition related failures.
           # Re-enable parallel execution only after GTK4 stability has been verified.
-
+          dbus-uuidgen --ensure
+          dbus-run-session -- \
           xvfb-run -s "-screen 0 800x600x24" \
             meson test -v -C build --num-processes 1
