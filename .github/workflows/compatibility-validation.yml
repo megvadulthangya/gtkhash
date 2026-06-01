@@ -1,0 +1,645 @@
+name: Compatibility Validation
+
+on:
+  push:
+    branches:
+      - gtk4
+      - master
+  pull_request:
+    branches:
+      - gtk4
+      - master
+  workflow_dispatch:
+
+env:
+  MESON_TEST_COMMAND: xvfb-run -s "-screen 0 800x600x24" meson test -v -C build
+
+jobs:
+
+  # ============================================================
+  # LEGACY AUTOTOOLS VALIDATION
+  # ============================================================
+  #
+  # Legacy Autotools jobs are intentionally preserved.
+  # Do not delete.
+  #
+  # autotools-ubuntu:
+  #   runs-on: ubuntu-22.04
+  #   timeout-minutes: 45
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Install dependencies
+  #       timeout-minutes: 15
+  #       run: |
+  #         export DEBIAN_FRONTEND=noninteractive
+  #         sudo apt-get update
+  #         sudo apt-get install -y \
+  #           build-essential \
+  #           libtool \
+  #           gettext \
+  #           autopoint \
+  #           appstream \
+  #           libglib2.0-dev \
+  #           libgtk-3-dev \
+  #           libgcrypt20-dev \
+  #           nettle-dev \
+  #           libb2-dev \
+  #           libmbedtls-dev \
+  #           libssl-dev \
+  #           linux-libc-dev \
+  #           librsvg2-bin \
+  #           libxml2-utils \
+  #           at-spi2-core \
+  #           xvfb \
+  #           gnome-icon-theme \
+  #           libnautilus-extension-dev \
+  #           libnemo-extension-dev \
+  #           libcaja-extension-dev \
+  #           libthunarx-3-dev
+  #
+  #     - name: Autogen and distcheck
+  #       timeout-minutes: 30
+  #       run: |
+  #         export NO_AT_BRIDGE=1
+  #         ./autogen.sh
+  #         export DISTCHECK_CONFIGURE_FLAGS="--enable-debug \
+  #           --enable-blake2 \
+  #           --enable-gcrypt \
+  #           --enable-glib-checksums \
+  #           --enable-mbedtls \
+  #           --enable-nettle \
+  #           --enable-libcrypto \
+  #           --enable-linux-crypto \
+  #           --enable-nautilus \
+  #           --enable-nemo \
+  #           --enable-caja \
+  #           --enable-thunar \
+  #           --disable-dependency-tracking"
+  #
+  #         ./configure $DISTCHECK_CONFIGURE_FLAGS
+  #         make VERBOSE=1 DESTDIR=$(mktemp -d) distcheck
+
+  ubuntu-gtk3:
+    name: Ubuntu 22.04 GTK3 (${{ matrix.compiler }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - gcc
+          - clang
+
+    env:
+      CC: ${{ matrix.compiler }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        timeout-minutes: 15
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+
+          sudo apt-get update
+
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            gcc \
+            meson \
+            ninja-build \
+            gettext \
+            appstream \
+            pkg-config \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            libgcrypt20-dev \
+            nettle-dev \
+            libb2-dev \
+            libmbedtls-dev \
+            libssl-dev \
+            linux-libc-dev \
+            librsvg2-bin \
+            libxml2-utils \
+            at-spi2-core \
+            xvfb \
+            gnome-icon-theme \
+            libnautilus-extension-dev \
+            libnemo-extension-dev \
+            libcaja-extension-dev \
+            libthunarx-3-dev
+
+      - name: Meson setup
+        run: |
+          meson setup build \
+            --buildtype=debug \
+            -Dglib-checksums=true \
+            -Dlinux-crypto=true \
+            -Dnettle=true \
+            -Dmbedtls=true \
+            -Dlibcrypto=true \
+            -Dbuild-nautilus=true \
+            -Dbuild-nemo=true \
+            -Dbuild-caja=true \
+            -Dbuild-thunar=true
+
+      - name: Build
+        run: |
+          ninja -C build
+
+      - name: Test
+        timeout-minutes: 20
+        run: |
+          # GTK3 tests are allowed to run in parallel for faster validation.
+          xvfb-run -s "-screen 0 800x600x24" \
+            meson test -v -C build
+
+  debian13-gtk3:
+    name: Debian 13 GTK3
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    container:
+      image: debian:13
+
+    steps:
+      - name: Install dependencies
+        timeout-minutes: 15
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+
+          apt-get update
+
+          apt-get install -y \
+            git \
+            build-essential \
+            meson \
+            ninja-build \
+            gettext \
+            appstream \
+            pkg-config \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            libgcrypt20-dev \
+            nettle-dev \
+            libb2-dev \
+            libmbedtls-dev \
+            libssl-dev \
+            linux-libc-dev \
+            librsvg2-bin \
+            libxml2-utils \
+            at-spi2-core \
+            xvfb \
+            adwaita-icon-theme \
+            libnautilus-extension-dev \
+            libnemo-extension-dev \
+            libcaja-extension-dev \
+            libthunarx-3-dev
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Meson setup
+        run: |
+          meson setup build \
+            --buildtype=debug \
+            -Dglib-checksums=true \
+            -Dlinux-crypto=true \
+            -Dnettle=true \
+            -Dmbedtls=false \
+            -Dlibcrypto=true \
+            -Dbuild-nautilus=false \
+            -Dbuild-nemo=true \
+            -Dbuild-caja=true \
+            -Dbuild-thunar=true
+
+      - name: Build
+        run: |
+          ninja -C build
+
+      - name: Test
+        timeout-minutes: 20
+        run: |
+          # GTK3 tests are allowed to run in parallel for faster validation.
+          xvfb-run -s "-screen 0 800x600x24" \
+            meson test -v -C build
+
+  debian13-gtk4:
+    name: Debian 13 GTK4
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    container:
+      image: debian:13
+
+    steps:
+      - name: Install dependencies
+        timeout-minutes: 15
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+
+          apt-get update
+
+          apt-get install -y \
+            git \
+            dbus \
+            build-essential \
+            meson \
+            ninja-build \
+            gettext \
+            appstream \
+            pkg-config \
+            libglib2.0-dev \
+            libgtk-4-dev \
+            libgcrypt20-dev \
+            nettle-dev \
+            libb2-dev \
+            libmbedtls-dev \
+            libssl-dev \
+            linux-libc-dev \
+            librsvg2-bin \
+            libxml2-utils \
+            at-spi2-core \
+            xvfb \
+            adwaita-icon-theme
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect GTK4 support
+        id: gtk4
+        run: |
+          if \
+            [ -f data/gtkhash-gtk4.ui ] || \
+            [ -f data/gtkhash-gtk4.gresource.xml ] || \
+            [ -f data/gtkhash-gtk4-test.ui ] || \
+            [ -f data/gtkhash-gtk4-test.gresource.xml ] || \
+            [ -f data/nautilus/gtkhash-properties-gtk4.ui ] || \
+            [ -f data/nautilus/gtkhash-properties-gtk4.gresource.xml ]
+          then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: GTK4 not implemented
+        if: steps.gtk4.outputs.enabled != 'true'
+        run: |
+          echo "GTK4 support not implemented yet."
+
+      - name: Meson setup
+        if: steps.gtk4.outputs.enabled == 'true'
+        run: |
+          meson setup build \
+            --buildtype=debug \
+            -Dgtk_version=4 \
+            -Dglib-checksums=true \
+            -Dlinux-crypto=true \
+            -Dnettle=true \
+            -Dmbedtls=true \
+            -Dlibcrypto=true
+
+      - name: Build
+        if: steps.gtk4.outputs.enabled == 'true'
+        run: |
+          ninja -C build
+
+      - name: Test
+        if: steps.gtk4.outputs.enabled == 'true'
+        timeout-minutes: 20
+        run: |
+          # GTK4 tests are executed with a single worker process.
+          # Running Meson tests in parallel under Xvfb causes intermittent crashes and race-condition related failures.
+          # Re-enable parallel execution only after GTK4 stability has been verified.
+          dbus-uuidgen --ensure
+          export GDK_DEBUG=no-portals
+          xvfb-run -s "-screen 0 800x600x24" \
+            dbus-run-session -- \
+            meson test -v -C build --num-processes 1
+
+  archlinux-gtk3:
+    name: Arch Linux GTK3
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Install dependencies
+        timeout-minutes: 15
+        run: |
+          pacman -Sy --noconfirm archlinux-keyring
+
+          pacman -Syu --noconfirm
+
+          pacman -S --noconfirm --needed \
+            base-devel \
+            git \
+            meson \
+            ninja \
+            pkgconf \
+            gettext \
+            appstream \
+            glib2 \
+            gtk3 \
+            librsvg \
+            gsettings-desktop-schemas \
+            adwaita-icon-theme \
+            xorg-server-xvfb \
+            libgcrypt \
+            nettle \
+            libb2 \
+            mbedtls \
+            openssl \
+            linux-api-headers \
+            nemo \
+            caja \
+            thunar
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Meson setup
+        run: |
+          meson setup build \
+            --buildtype=debug \
+            -Dglib-checksums=true \
+            -Dlinux-crypto=true \
+            -Dnettle=true \
+            -Dmbedtls=false \
+            -Dlibcrypto=true \
+            -Dbuild-nautilus=false \
+            -Dbuild-nemo=true \
+            -Dbuild-caja=true \
+            -Dbuild-thunar=true
+
+      - name: Build
+        run: |
+          ninja -C build
+
+      - name: Test
+        timeout-minutes: 20
+        run: |
+          # GTK3 tests are allowed to run in parallel for faster validation.
+          xvfb-run -s "-screen 0 800x600x24" \
+            meson test -v -C build
+
+  archlinux-gtk4:
+    name: Arch Linux GTK4
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Install dependencies
+        timeout-minutes: 15
+        run: |
+          pacman -Sy --noconfirm archlinux-keyring
+
+          pacman -Syu --noconfirm
+
+          pacman -S --noconfirm --needed \
+            base-devel \
+            git \
+            dbus \
+            meson \
+            ninja \
+            pkgconf \
+            gettext \
+            appstream \
+            glib2 \
+            gtk4 \
+            librsvg \
+            gsettings-desktop-schemas \
+            adwaita-icon-theme \
+            xorg-server-xvfb \
+            libgcrypt \
+            nettle \
+            libb2 \
+            mbedtls \
+            openssl \
+            linux-api-headers
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect GTK4 support
+        id: gtk4
+        run: |
+          if \
+            [ -f data/gtkhash-gtk4.ui ] || \
+            [ -f data/gtkhash-gtk4.gresource.xml ] || \
+            [ -f data/gtkhash-gtk4-test.ui ] || \
+            [ -f data/gtkhash-gtk4-test.gresource.xml ] || \
+            [ -f data/nautilus/gtkhash-properties-gtk4.ui ] || \
+            [ -f data/nautilus/gtkhash-properties-gtk4.gresource.xml ]
+          then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: GTK4 not implemented
+        if: steps.gtk4.outputs.enabled != 'true'
+        run: |
+          echo "GTK4 support not implemented yet."
+
+      - name: Meson setup
+        if: steps.gtk4.outputs.enabled == 'true'
+        run: |
+          meson setup build \
+            --buildtype=debug \
+            -Dgtk_version=4 \
+            -Dglib-checksums=true \
+            -Dlinux-crypto=true \
+            -Dnettle=true \
+            -Dmbedtls=true \
+            -Dlibcrypto=true
+
+      - name: Build
+        if: steps.gtk4.outputs.enabled == 'true'
+        run: |
+          ninja -C build
+
+      - name: Test
+        if: steps.gtk4.outputs.enabled == 'true'
+        timeout-minutes: 20
+        run: |
+          # GTK4 tests are executed with a single worker process.
+          # Running Meson tests in parallel under Xvfb causes intermittent crashes and race-condition related failures.
+          # Re-enable parallel execution only after GTK4 stability has been verified.
+          dbus-uuidgen --ensure
+          export GDK_DEBUG=no-portals
+          xvfb-run -s "-screen 0 800x600x24" \
+            dbus-run-session -- \
+            meson test -v -C build --num-processes 1
+
+  fedora44-gtk3:
+    name: Fedora 44 GTK3
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    container:
+      image: fedora:44
+
+    steps:
+      - name: Install dependencies
+        timeout-minutes: 15
+        run: |
+          dnf -y update
+
+          dnf -y install \
+            git \
+            gcc \
+            gcc-c++ \
+            meson \
+            ninja-build \
+            gettext \
+            appstream \
+            pkgconf-pkg-config \
+            glib2-devel \
+            gtk3-devel \
+            libgcrypt-devel \
+            nettle-devel \
+            libb2-devel \
+            mbedtls-devel \
+            openssl-devel \
+            kernel-headers \
+            librsvg2 \
+            librsvg2-tools \
+            libxml2 \
+            at-spi2-core \
+            xorg-x11-server-Xvfb \
+            adwaita-icon-theme \
+            nautilus-devel \
+            nemo-devel \
+            caja-devel \
+            Thunar-devel
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Meson setup
+        run: |
+          meson setup build \
+            --buildtype=debug \
+            -Dglib-checksums=true \
+            -Dlinux-crypto=true \
+            -Dnettle=true \
+            -Dmbedtls=false \
+            -Dlibcrypto=true \
+            -Dbuild-nautilus=false \
+            -Dbuild-nemo=true \
+            -Dbuild-caja=true \
+            -Dbuild-thunar=true
+
+      - name: Build
+        run: |
+          ninja -C build
+
+      - name: Test
+        timeout-minutes: 20
+        run: |
+          # GTK3 tests are allowed to run in parallel for faster validation.
+          xvfb-run -s "-screen 0 800x600x24" \
+            meson test -v -C build
+
+  fedora44-gtk4:
+    name: Fedora 44 GTK4
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    container:
+      image: fedora:44
+
+    steps:
+      - name: Install dependencies
+        timeout-minutes: 15
+        run: |
+          dnf -y update
+
+          dnf -y install \
+            git \
+            dbus-daemon \
+            gcc \
+            gcc-c++ \
+            meson \
+            ninja-build \
+            gettext \
+            appstream \
+            pkgconf-pkg-config \
+            glib2-devel \
+            gtk4-devel \
+            libgcrypt-devel \
+            nettle-devel \
+            libb2-devel \
+            mbedtls-devel \
+            openssl-devel \
+            kernel-headers \
+            librsvg2 \
+            librsvg2-tools \
+            libxml2 \
+            at-spi2-core \
+            xorg-x11-server-Xvfb \
+            adwaita-icon-theme
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect GTK4 support
+        id: gtk4
+        run: |
+          if \
+            [ -f data/gtkhash-gtk4.ui ] || \
+            [ -f data/gtkhash-gtk4.gresource.xml ] || \
+            [ -f data/gtkhash-gtk4-test.ui ] || \
+            [ -f data/gtkhash-gtk4-test.gresource.xml ] || \
+            [ -f data/nautilus/gtkhash-properties-gtk4.ui ] || \
+            [ -f data/nautilus/gtkhash-properties-gtk4.gresource.xml ]
+          then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: GTK4 not implemented
+        if: steps.gtk4.outputs.enabled != 'true'
+        run: |
+          echo "GTK4 support not implemented yet."
+
+      - name: Meson setup
+        if: steps.gtk4.outputs.enabled == 'true'
+        run: |
+          meson setup build \
+            --buildtype=debug \
+            -Dgtk_version=4 \
+            -Dglib-checksums=true \
+            -Dlinux-crypto=true \
+            -Dnettle=true \
+            -Dmbedtls=true \
+            -Dlibcrypto=true
+
+      - name: Build
+        if: steps.gtk4.outputs.enabled == 'true'
+        run: |
+          ninja -C build
+
+      - name: Test
+        if: steps.gtk4.outputs.enabled == 'true'
+        timeout-minutes: 20
+        run: |
+          # GTK4 tests are executed with a single worker process.
+          # Running Meson tests in parallel under Xvfb causes intermittent crashes and race-condition related failures.
+          # Re-enable parallel execution only after GTK4 stability has been verified.
+          dbus-uuidgen --ensure
+          export GDK_DEBUG=no-portals
+          xvfb-run -s "-screen 0 800x600x24" \
+            dbus-run-session -- \
+            meson test -v -C build --num-processes 1
