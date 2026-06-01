@@ -228,6 +228,99 @@ jobs:
           xvfb-run -s "-screen 0 800x600x24" \
             meson test -v -C build
 
+  debian13-gtk4:
+    name: Debian 13 GTK4
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    container:
+      image: debian:13
+
+    steps:
+      - name: Install dependencies
+        timeout-minutes: 15
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+
+          apt-get update
+
+          apt-get install -y \
+            git \
+            dbus \
+            build-essential \
+            meson \
+            ninja-build \
+            gettext \
+            appstream \
+            pkg-config \
+            libglib2.0-dev \
+            libgtk-4-dev \
+            libgcrypt20-dev \
+            nettle-dev \
+            libb2-dev \
+            libmbedtls-dev \
+            libssl-dev \
+            linux-libc-dev \
+            librsvg2-bin \
+            libxml2-utils \
+            at-spi2-core \
+            xvfb \
+            adwaita-icon-theme
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect GTK4 support
+        id: gtk4
+        run: |
+          if \
+            [ -f data/gtkhash-gtk4.ui ] || \
+            [ -f data/gtkhash-gtk4.gresource.xml ] || \
+            [ -f data/gtkhash-gtk4-test.ui ] || \
+            [ -f data/gtkhash-gtk4-test.gresource.xml ] || \
+            [ -f data/nautilus/gtkhash-properties-gtk4.ui ] || \
+            [ -f data/nautilus/gtkhash-properties-gtk4.gresource.xml ]
+          then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: GTK4 not implemented
+        if: steps.gtk4.outputs.enabled != 'true'
+        run: |
+          echo "GTK4 support not implemented yet."
+
+      - name: Meson setup
+        if: steps.gtk4.outputs.enabled == 'true'
+        run: |
+          meson setup build \
+            --buildtype=debug \
+            -Dgtk_version=4 \
+            -Dglib-checksums=true \
+            -Dlinux-crypto=true \
+            -Dnettle=true \
+            -Dmbedtls=true \
+            -Dlibcrypto=true
+
+      - name: Build
+        if: steps.gtk4.outputs.enabled == 'true'
+        run: |
+          ninja -C build
+
+      - name: Test
+        if: steps.gtk4.outputs.enabled == 'true'
+        timeout-minutes: 20
+        run: |
+          # GTK4 tests are executed with a single worker process.
+          # Running Meson tests in parallel under Xvfb causes intermittent crashes and race-condition related failures.
+          # Re-enable parallel execution only after GTK4 stability has been verified.
+          dbus-uuidgen --ensure
+          export GDK_DEBUG=no-portals
+          xvfb-run -s "-screen 0 800x600x24" \
+            dbus-run-session -- \
+            meson test -v -C build --num-processes 1
+
   archlinux-gtk3:
     name: Arch Linux GTK3
     runs-on: ubuntu-latest
