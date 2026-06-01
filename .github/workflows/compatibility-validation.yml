@@ -362,6 +362,7 @@ jobs:
         run: |
           meson setup build \
             --buildtype=debug \
+            -Dgtk_version=4 \
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
@@ -521,6 +522,7 @@ jobs:
         run: |
           meson setup build \
             --buildtype=debug \
+            -Dgtk_version=4 \
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
