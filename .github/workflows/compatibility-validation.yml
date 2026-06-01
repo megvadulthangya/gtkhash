@@ -383,8 +383,9 @@ jobs:
           # Running Meson tests in parallel under Xvfb causes intermittent crashes and race-condition related failures.
           # Re-enable parallel execution only after GTK4 stability has been verified.
           dbus-uuidgen --ensure
-          dbus-run-session -- \
+          export GDK_DEBUG=no-portals
           xvfb-run -s "-screen 0 800x600x24" \
+            dbus-run-session -- \
             meson test -v -C build --num-processes 1
 
   fedora44-gtk3:
@@ -545,6 +546,7 @@ jobs:
           # Running Meson tests in parallel under Xvfb causes intermittent crashes and race-condition related failures.
           # Re-enable parallel execution only after GTK4 stability has been verified.
           dbus-uuidgen --ensure
-          dbus-run-session -- \
+          export GDK_DEBUG=no-portals
           xvfb-run -s "-screen 0 800x600x24" \
+            dbus-run-session -- \
             meson test -v -C build --num-processes 1
