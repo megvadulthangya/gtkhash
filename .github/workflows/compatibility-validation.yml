@@ -315,6 +315,7 @@ jobs:
           pacman -S --noconfirm --needed \
             base-devel \
             git \
+            dbus \
             meson \
             ninja \
             pkgconf \
@@ -471,6 +472,7 @@ jobs:
 
           dnf -y install \
             git \
+            dbus-daemon \
             gcc \
             gcc-c++ \
             meson \
