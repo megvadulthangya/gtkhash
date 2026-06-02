@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - gtk4
-      - master
+      - extensions
   pull_request:
     branches:
       - gtk4
-      - master
+      - extensions
   workflow_dispatch:
 
 env:
