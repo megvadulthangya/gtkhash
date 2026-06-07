@@ -616,7 +616,7 @@ gtkhash_menu_launch (GList *uris)
 
 /* ---------- helper to free a deep-copied list of GObjects ---------- */
 static void
-files_list_free (gpointer data)
+files_list_free (gpointer data, G_GNUC_UNUSED GClosure *closure)
 {
     g_list_free_full (data, g_object_unref);
 }
@@ -690,6 +690,7 @@ gtkhash_menu_nautilus_item_activate (NautilusMenuItem *item,
 
 static GList *
 gtkhash_menu_nautilus_get_file_items (NautilusMenuProvider *provider,
+                                      G_GNUC_UNUSED GtkWidget *window,
                                       GList                *files)
 {
     NautilusMenuItem *item = nautilus_menu_item_new ("GtkHash::menu_item",
@@ -735,6 +736,7 @@ gtkhash_menu_caja_item_activate (CajaMenuItem *item,
 
 static GList *
 gtkhash_menu_caja_get_file_items (CajaMenuProvider *provider,
+                                  G_GNUC_UNUSED GtkWidget *window,
                                   GList             *files)
 {
     CajaMenuItem *item = caja_menu_item_new ("GtkHash::menu_item",
@@ -749,7 +751,7 @@ gtkhash_menu_caja_get_file_items (CajaMenuProvider *provider,
 }
 
 static void
-gtkhash_menu_caja_iface_init (CajaMenuProviderInterface *iface,
+gtkhash_menu_caja_iface_init (CajaMenuProviderIface *iface,
                               gpointer data)
 {
     iface->get_file_items = gtkhash_menu_caja_get_file_items;
@@ -780,6 +782,7 @@ gtkhash_menu_nemo_item_activate (NemoMenuItem *item,
 
 static GList *
 gtkhash_menu_nemo_get_file_items (NemoMenuProvider *provider,
+                                  G_GNUC_UNUSED GtkWidget *window,
                                   GList             *files)
 {
     NemoMenuItem *item = nemo_menu_item_new ("GtkHash::menu_item",
@@ -831,6 +834,7 @@ gtkhash_menu_thunar_item_activate (ThunarxMenuItem *item,
 
 static GList *
 gtkhash_menu_thunar_get_file_items (ThunarxMenuProvider *provider,
+                                    G_GNUC_UNUSED GtkWidget *window,
                                     GList                *files)
 {
     ThunarxMenuItem *item = thunarx_menu_item_new ("GtkHash::menu_item",
