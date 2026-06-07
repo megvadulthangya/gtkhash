@@ -850,7 +850,7 @@ static void
 gtkhash_menu_thunar_iface_init (ThunarxMenuProviderIface *iface,
                                 gpointer data)
 {
-    iface->get_file_items = gtkhash_menu_thunar_get_file_items;
+    iface->get_file_menu_items = gtkhash_menu_thunar_get_file_items;
 }
 #endif /* Thunar */
 
