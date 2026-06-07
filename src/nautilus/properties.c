@@ -51,8 +51,6 @@
 #elif defined(IN_THUNAR_EXTENSION)
     #undef GTK_DISABLE_DEPRECATED // thunarx-3 doesn't build with this
     #include <thunarx/thunarx.h>
-    #include <thunarx/thunarx-menu-provider.h>
-    #include <thunarx/thunarx-menu-item.h>
 #endif
 
 #include <stdlib.h>
@@ -849,7 +847,7 @@ gtkhash_menu_thunar_get_file_items (ThunarxMenuProvider *provider,
 }
 
 static void
-gtkhash_menu_thunar_iface_init (ThunarxMenuProviderInterface *iface,
+gtkhash_menu_thunar_iface_init (ThunarxMenuProviderIface *iface,
                                 gpointer data)
 {
     iface->get_file_items = gtkhash_menu_thunar_get_file_items;
