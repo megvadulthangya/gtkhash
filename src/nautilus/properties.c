@@ -692,7 +692,7 @@ gtkhash_menu_nautilus_get_file_items (NautilusMenuProvider *provider,
                                       GList                *files)
 {
     NautilusMenuItem *item = nautilus_menu_item_new ("GtkHash::menu_item",
-                                                     _("GtkHash"), NULL, NULL);
+                                                     _("GtkHash"), "", NULL);
     GList *files_copy = g_list_copy_deep (files, (GCopyFunc) g_object_ref, NULL);
     g_signal_connect_data (item, "activate",
                            G_CALLBACK (gtkhash_menu_nautilus_item_activate),
@@ -738,7 +738,7 @@ gtkhash_menu_caja_get_file_items (CajaMenuProvider *provider,
                                   GList             *files)
 {
     CajaMenuItem *item = caja_menu_item_new ("GtkHash::menu_item",
-                                             _("GtkHash"), NULL, NULL);
+                                             _("GtkHash"), "", NULL);
     GList *files_copy = g_list_copy_deep (files, (GCopyFunc) g_object_ref, NULL);
     g_signal_connect_data (item, "activate",
                            G_CALLBACK (gtkhash_menu_caja_item_activate),
@@ -836,7 +836,7 @@ gtkhash_menu_thunar_get_file_items (ThunarxMenuProvider *provider,
                                     GList                *files)
 {
     ThunarxMenuItem *item = thunarx_menu_item_new ("GtkHash::menu_item",
-                                                   _("GtkHash"), NULL, NULL);
+                                                   _("GtkHash"), "", NULL);
     GList *files_copy = g_list_copy_deep (files, (GCopyFunc) g_object_ref, NULL);
     g_signal_connect_data (item, "activate",
                            G_CALLBACK (gtkhash_menu_thunar_item_activate),
