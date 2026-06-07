@@ -784,7 +784,7 @@ gtkhash_menu_nemo_get_file_items (NemoMenuProvider *provider,
                                   GList             *files)
 {
     NemoMenuItem *item = nemo_menu_item_new ("GtkHash::menu_item",
-                                             _("GtkHash"), NULL, NULL);
+                                             _("GtkHash"), "", NULL);
     GList *files_copy = g_list_copy_deep (files, (GCopyFunc) g_object_ref, NULL);
     g_signal_connect_data (item, "activate",
                            G_CALLBACK (gtkhash_menu_nemo_item_activate),
