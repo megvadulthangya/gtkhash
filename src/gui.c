@@ -1187,6 +1187,8 @@ void gui_set_state(const enum gui_state_e state)
     gtk_progress_bar_set_text(gui.progressbar, " ");
     gtk_widget_set_visible(GTK_WIDGET(gui.progressbar), busy);
 
+    // Keep hbox_input sensitive so that Check entries can be interacted with,
+    // but disable hash-affecting controls individually.
     gtk_widget_set_sensitive(GTK_WIDGET(gui.hbox_input), !busy);
     gtk_widget_set_sensitive(GTK_WIDGET(gui.hbox_output), !busy);
 #if !GTK_CHECK_VERSION(4, 0, 0)
@@ -1208,6 +1210,26 @@ void gui_set_state(const enum gui_state_e state)
     gtk_widget_set_sensitive(GTK_WIDGET(gui.dialog_grid), !busy);
     gtk_widget_set_sensitive(GTK_WIDGET(gui.dialog_togglebutton_show_hmac), !busy);
     gtk_widget_set_sensitive(GTK_WIDGET(gui.dialog_combobox), !busy);
+
+    // Disable file selection, text input, and HMAC controls while busy,
+    // but keep the Check entries editable.
+    if (busy) {
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.filechooserbutton), false);
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.entry_text), false);
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.togglebutton_hmac_file), false);
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.togglebutton_hmac_text), false);
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.entry_hmac_file), false);
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.entry_hmac_text), false);
+        // entry_check_file and entry_check_text remain enabled (inherited from hbox_input)
+    } else {
+        // Re-enable those widgets when returning to idle.
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.filechooserbutton), true);
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.entry_text), true);
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.togglebutton_hmac_file), true);
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.togglebutton_hmac_text), true);
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.entry_hmac_file), true);
+        gtk_widget_set_sensitive(GTK_WIDGET(gui.entry_hmac_text), true);
+    }
 
     if (busy) {
 #if GTK_CHECK_VERSION(4, 0, 0)

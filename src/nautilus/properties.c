@@ -101,7 +101,10 @@ static void gtkhash_properties_busy(struct page_s *page)
     page->busy = true;
 
     gtk_widget_set_sensitive(GTK_WIDGET(page->treeview), false);
-    gtk_widget_set_sensitive(GTK_WIDGET(page->hbox_inputs), false);
+    // Keep the inputs container sensitive so the Check entry stays editable.
+    // Only disable the HMAC toggle and entry.
+    gtk_widget_set_sensitive(GTK_WIDGET(page->togglebutton_hmac), false);
+    gtk_widget_set_sensitive(GTK_WIDGET(page->entry_hmac), false);
 
     // Reset progress bar
     gtk_progress_bar_set_fraction(page->progressbar, 0.0);
@@ -153,7 +156,10 @@ void gtkhash_properties_idle(struct page_s *page)
     gtkhash_properties_widget_show(GTK_WIDGET(page->button_hash));
 
     gtk_widget_set_sensitive(GTK_WIDGET(page->treeview), true);
+    // Re-enable the whole inputs container and make sure HMAC controls are sensitive
     gtk_widget_set_sensitive(GTK_WIDGET(page->hbox_inputs), true);
+    gtk_widget_set_sensitive(GTK_WIDGET(page->togglebutton_hmac), true);
+    // entry_hmac sensitivity will be adjusted by the next call
     gtkhash_properties_entry_hmac_set_sensitive(page);
 
     gtkhash_properties_list_check_digests(page);
