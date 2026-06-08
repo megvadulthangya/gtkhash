@@ -34,14 +34,20 @@
             #include <libnautilus-extension/nautilus-property-page.h>
             #include <libnautilus-extension/nautilus-property-page-provider.h>
         #endif
+        #include <libnautilus-extension/nautilus-menu-provider.h>
+        #include <libnautilus-extension/nautilus-menu-item.h>
     #endif
 #elif defined(IN_CAJA_EXTENSION)
     #include <libcaja-extension/caja-property-page.h>
     #include <libcaja-extension/caja-property-page-provider.h>
+    #include <libcaja-extension/caja-menu-provider.h>
+    #include <libcaja-extension/caja-menu-item.h>
 #elif defined(IN_NEMO_EXTENSION)
     #include <libnemo-extension/nemo-property-page.h>
     #include <libnemo-extension/nemo-property-page-provider.h>
     #include <libnemo-extension/nemo-name-and-desc-provider.h>
+    #include <libnemo-extension/nemo-menu-provider.h>
+    #include <libnemo-extension/nemo-menu-item.h>
 #elif defined(IN_THUNAR_EXTENSION)
     #undef GTK_DISABLE_DEPRECATED // thunarx-3 doesn't build with this
     #include <thunarx/thunarx.h>
@@ -572,44 +578,23 @@ static struct page_s *gtkhash_properties_new_page(char *uri)
     return page;
 }
 
-#if defined(IN_NAUTILUS_EXTENSION) && GTK_CHECK_VERSION(4, 0, 0)
-static GList *gtkhash_properties_get_models(
-    G_GNUC_UNUSED NautilusPropertiesModelProvider *provider,
-    GList *files)
-{
-    /* Nautilus 4 custom properties page is not supported;
-     * return NULL to effectively disable the extension for GTK4. */
-    return NULL;
-}
-
+/* ---------- common helper for launching the external gtkhash application ---------- */
 static void
-files_copy_free (gpointer data, GClosure *closure)
+gtkhash_menu_launch (GList *uris)
 {
-    g_list_free_full (data, g_object_unref);
-}
-
-static void
-gtkhash_properties_menu_item_activate (NautilusMenuItem *item,
-                                       gpointer           user_data)
-{
-    GList *files = user_data;
-
     gchar *exec = g_find_program_in_path ("gtkhash");
-    if (!exec)
+    if (!exec) {
+        g_list_free_full (uris, g_free);
         return;
+    }
 
     GPtrArray *args = g_ptr_array_new ();
     g_ptr_array_add (args, exec);
 
-    for (GList *l = files; l != NULL; l = l->next) {
-        NautilusFileInfo *info = NAUTILUS_FILE_INFO (l->data);
-        const char *uri = nautilus_file_info_get_uri (info);
-        if (g_strcmp0 (nautilus_file_info_get_uri_scheme (info), "file") == 0) {
-            gchar *path = g_filename_from_uri (uri, NULL, NULL);
-            if (path) {
-                g_ptr_array_add (args, path);
-            }
-        }
+    for (GList *l = uris; l != NULL; l = l->next) {
+        gchar *path = g_filename_from_uri (l->data, NULL, NULL);
+        if (path)
+            g_ptr_array_add (args, path);
     }
 
     g_ptr_array_add (args, NULL);
@@ -624,24 +609,51 @@ gtkhash_properties_menu_item_activate (NautilusMenuItem *item,
 
     g_free (exec);
     g_ptr_array_free (args, TRUE);
+    g_list_free_full (uris, g_free);
+}
+
+/* ---------- helper to free a deep-copied list of GObjects ---------- */
+static void
+files_list_free (gpointer data, G_GNUC_UNUSED GClosure *closure)
+{
+    g_list_free_full (data, g_object_unref);
+}
+
+/* ======================================================================
+ * Nautilus GTK4 context menu
+ * ====================================================================== */
+#if defined(IN_NAUTILUS_EXTENSION) && GTK_CHECK_VERSION(4, 0, 0)
+static void
+gtkhash_properties_menu_item_activate (NautilusMenuItem *item,
+                                       gpointer           user_data)
+{
+    GList *files = user_data;
+    GList *uris = NULL;
+
+    for (GList *l = files; l != NULL; l = l->next) {
+        NautilusFileInfo *info = NAUTILUS_FILE_INFO (l->data);
+        if (g_strcmp0 (nautilus_file_info_get_uri_scheme (info), "file") == 0) {
+            uris = g_list_prepend (uris,
+                g_strdup (nautilus_file_info_get_uri (info)));
+        }
+    }
+    uris = g_list_reverse (uris);
+    gtkhash_menu_launch (uris);
 }
 
 static GList *
 gtkhash_properties_get_file_items (NautilusMenuProvider *provider,
                                    GList                *files)
 {
-    GList *items = NULL;
     NautilusMenuItem *item = nautilus_menu_item_new ("GtkHash::menu_item",
                                                      _("GtkHash"), NULL, NULL);
-
-    /* Copy files list to ensure it stays alive when the signal fires */
     GList *files_copy = g_list_copy_deep (files, (GCopyFunc) g_object_ref, NULL);
     g_signal_connect_data (item, "activate",
                            G_CALLBACK (gtkhash_properties_menu_item_activate),
                            files_copy,
-                           files_copy_free, 0);
-    items = g_list_append (items, item);
-    return items;
+                           files_list_free, 0);
+
+    return g_list_append (NULL, item);
 }
 
 static void
@@ -650,8 +662,201 @@ gtkhash_properties_menu_iface_init (NautilusMenuProviderInterface *iface,
 {
     iface->get_file_items = gtkhash_properties_get_file_items;
 }
-#endif
+#endif /* Nautilus GTK4 */
 
+/* ======================================================================
+ * Nautilus GTK3 context menu
+ * ====================================================================== */
+#if defined(IN_NAUTILUS_EXTENSION) && !GTK_CHECK_VERSION(4, 0, 0)
+static void
+gtkhash_menu_nautilus_item_activate (NautilusMenuItem *item,
+                                     gpointer           user_data)
+{
+    GList *files = user_data;
+    GList *uris = NULL;
+
+    for (GList *l = files; l != NULL; l = l->next) {
+        NautilusFileInfo *info = NAUTILUS_FILE_INFO (l->data);
+        if (g_strcmp0 (nautilus_file_info_get_uri_scheme (info), "file") == 0) {
+            uris = g_list_prepend (uris,
+                g_strdup (nautilus_file_info_get_uri (info)));
+        }
+    }
+    uris = g_list_reverse (uris);
+    gtkhash_menu_launch (uris);
+}
+
+static GList *
+gtkhash_menu_nautilus_get_file_items (NautilusMenuProvider *provider,
+                                      G_GNUC_UNUSED GtkWidget *window,
+                                      GList                *files)
+{
+    NautilusMenuItem *item = nautilus_menu_item_new ("GtkHash::menu_item",
+                                                     _("GtkHash"), "", NULL);
+    GList *files_copy = g_list_copy_deep (files, (GCopyFunc) g_object_ref, NULL);
+    g_signal_connect_data (item, "activate",
+                           G_CALLBACK (gtkhash_menu_nautilus_item_activate),
+                           files_copy,
+                           files_list_free, 0);
+
+    return g_list_append (NULL, item);
+}
+
+static void
+gtkhash_menu_nautilus_iface_init (NautilusMenuProviderInterface *iface,
+                                  gpointer data)
+{
+    iface->get_file_items = gtkhash_menu_nautilus_get_file_items;
+}
+#endif /* Nautilus GTK3 */
+
+/* ======================================================================
+ * Caja context menu
+ * ====================================================================== */
+#if defined(IN_CAJA_EXTENSION)
+static void
+gtkhash_menu_caja_item_activate (CajaMenuItem *item,
+                                 gpointer       user_data)
+{
+    GList *files = user_data;
+    GList *uris = NULL;
+
+    for (GList *l = files; l != NULL; l = l->next) {
+        CajaFileInfo *info = CAJA_FILE_INFO (l->data);
+        if (g_strcmp0 (caja_file_info_get_uri_scheme (info), "file") == 0) {
+            uris = g_list_prepend (uris,
+                g_strdup (caja_file_info_get_uri (info)));
+        }
+    }
+    uris = g_list_reverse (uris);
+    gtkhash_menu_launch (uris);
+}
+
+static GList *
+gtkhash_menu_caja_get_file_items (CajaMenuProvider *provider,
+                                  G_GNUC_UNUSED GtkWidget *window,
+                                  GList             *files)
+{
+    CajaMenuItem *item = caja_menu_item_new ("GtkHash::menu_item",
+                                             _("GtkHash"), "", NULL);
+    GList *files_copy = g_list_copy_deep (files, (GCopyFunc) g_object_ref, NULL);
+    g_signal_connect_data (item, "activate",
+                           G_CALLBACK (gtkhash_menu_caja_item_activate),
+                           files_copy,
+                           files_list_free, 0);
+
+    return g_list_append (NULL, item);
+}
+
+static void
+gtkhash_menu_caja_iface_init (CajaMenuProviderIface *iface,
+                              gpointer data)
+{
+    iface->get_file_items = gtkhash_menu_caja_get_file_items;
+}
+#endif /* Caja */
+
+/* ======================================================================
+ * Nemo context menu
+ * ====================================================================== */
+#if defined(IN_NEMO_EXTENSION)
+static void
+gtkhash_menu_nemo_item_activate (NemoMenuItem *item,
+                                 gpointer       user_data)
+{
+    GList *files = user_data;
+    GList *uris = NULL;
+
+    for (GList *l = files; l != NULL; l = l->next) {
+        NemoFileInfo *info = NEMO_FILE_INFO (l->data);
+        if (g_strcmp0 (nemo_file_info_get_uri_scheme (info), "file") == 0) {
+            uris = g_list_prepend (uris,
+                g_strdup (nemo_file_info_get_uri (info)));
+        }
+    }
+    uris = g_list_reverse (uris);
+    gtkhash_menu_launch (uris);
+}
+
+static GList *
+gtkhash_menu_nemo_get_file_items (NemoMenuProvider *provider,
+                                  G_GNUC_UNUSED GtkWidget *window,
+                                  GList             *files)
+{
+    NemoMenuItem *item = nemo_menu_item_new ("GtkHash::menu_item",
+                                             _("GtkHash"), "", NULL);
+    GList *files_copy = g_list_copy_deep (files, (GCopyFunc) g_object_ref, NULL);
+    g_signal_connect_data (item, "activate",
+                           G_CALLBACK (gtkhash_menu_nemo_item_activate),
+                           files_copy,
+                           files_list_free, 0);
+
+    return g_list_append (NULL, item);
+}
+
+static void
+gtkhash_menu_nemo_iface_init (NemoMenuProviderInterface *iface,
+                              gpointer data)
+{
+    iface->get_file_items = gtkhash_menu_nemo_get_file_items;
+}
+#endif /* Nemo */
+
+/* ======================================================================
+ * Thunar context menu
+ * ====================================================================== */
+#if defined(IN_THUNAR_EXTENSION)
+static void
+gtkhash_menu_thunar_item_activate (ThunarxMenuItem *item,
+                                   gpointer          user_data)
+{
+    GList *files = user_data;
+    GList *uris = NULL;
+
+    for (GList *l = files; l != NULL; l = l->next) {
+        ThunarxFileInfo *info = THUNARX_FILE_INFO (l->data);
+        /* ThunarxFileInfo does not have a direct scheme check; try to get URI */
+        gchar *uri = thunarx_file_info_get_uri (info);
+        if (uri) {
+            gchar *scheme = g_uri_parse_scheme (uri);
+            if (scheme && g_strcmp0 (scheme, "file") == 0) {
+                uris = g_list_prepend (uris, g_strdup (uri));
+            }
+            g_free (scheme);
+            g_free (uri);
+        }
+    }
+    uris = g_list_reverse (uris);
+    gtkhash_menu_launch (uris);
+}
+
+static GList *
+gtkhash_menu_thunar_get_file_items (ThunarxMenuProvider *provider,
+                                    G_GNUC_UNUSED GtkWidget *window,
+                                    GList                *files)
+{
+    ThunarxMenuItem *item = thunarx_menu_item_new ("GtkHash::menu_item",
+                                                   _("GtkHash"), "", NULL);
+    GList *files_copy = g_list_copy_deep (files, (GCopyFunc) g_object_ref, NULL);
+    g_signal_connect_data (item, "activate",
+                           G_CALLBACK (gtkhash_menu_thunar_item_activate),
+                           files_copy,
+                           files_list_free, 0);
+
+    return g_list_append (NULL, item);
+}
+
+static void
+gtkhash_menu_thunar_iface_init (ThunarxMenuProviderIface *iface,
+                                gpointer data)
+{
+    iface->get_file_menu_items = gtkhash_menu_thunar_get_file_items;
+}
+#endif /* Thunar */
+
+/* --------------------------------------------------------------------------
+ * Properties page (unchanged, but only for non‑GTK4 Nautilus builds)
+ * -------------------------------------------------------------------------- */
 #if !defined(IN_NAUTILUS_EXTENSION) || !GTK_CHECK_VERSION(4, 0, 0)
 static GList *gtkhash_properties_get_pages(
 #if defined(IN_NAUTILUS_EXTENSION)
@@ -751,6 +956,17 @@ static void gtkhash_properties_pp_iface_init(
 #endif
 }
 
+#if defined(IN_NAUTILUS_EXTENSION) && GTK_CHECK_VERSION(4, 0, 0)
+static GList *gtkhash_properties_get_models(
+    G_GNUC_UNUSED NautilusPropertiesModelProvider *provider,
+    GList *files)
+{
+    /* Nautilus 4 custom properties page is not supported;
+     * return NULL to effectively disable the extension for GTK4. */
+    return NULL;
+}
+#endif
+
 static void gtkhash_properties_register_type(GTypeModule *module)
 {
     const GTypeInfo info = {
@@ -798,6 +1014,37 @@ static void gtkhash_properties_register_type(GTypeModule *module)
         THUNARX_TYPE_PROPERTY_PAGE_PROVIDER,
 #endif
         &pp_iface_info);
+
+    /* Add context menu provider for GTK3‑era file managers */
+    #if defined(IN_NAUTILUS_EXTENSION)
+        const GInterfaceInfo menu_gtk3_iface_info = {
+            (GInterfaceInitFunc) gtkhash_menu_nautilus_iface_init,
+            NULL, NULL
+        };
+        g_type_module_add_interface(module, page_type,
+            NAUTILUS_TYPE_MENU_PROVIDER, &menu_gtk3_iface_info);
+    #elif defined(IN_CAJA_EXTENSION)
+        const GInterfaceInfo menu_caja_iface_info = {
+            (GInterfaceInitFunc) gtkhash_menu_caja_iface_init,
+            NULL, NULL
+        };
+        g_type_module_add_interface(module, page_type,
+            CAJA_TYPE_MENU_PROVIDER, &menu_caja_iface_info);
+    #elif defined(IN_NEMO_EXTENSION)
+        const GInterfaceInfo menu_nemo_iface_info = {
+            (GInterfaceInitFunc) gtkhash_menu_nemo_iface_init,
+            NULL, NULL
+        };
+        g_type_module_add_interface(module, page_type,
+            NEMO_TYPE_MENU_PROVIDER, &menu_nemo_iface_info);
+    #elif defined(IN_THUNAR_EXTENSION)
+        const GInterfaceInfo menu_thunar_iface_info = {
+            (GInterfaceInitFunc) gtkhash_menu_thunar_iface_init,
+            NULL, NULL
+        };
+        g_type_module_add_interface(module, page_type,
+            THUNARX_TYPE_MENU_PROVIDER, &menu_thunar_iface_info);
+    #endif
 #endif
 
 #ifdef IN_NEMO_EXTENSION

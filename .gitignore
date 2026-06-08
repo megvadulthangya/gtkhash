@@ -49,6 +49,8 @@ stamp-it
 test.md5sum
 merge-gtk
 gtk4-files
+full_project.txt
+merge-project
 
 *~
 *.bytes
