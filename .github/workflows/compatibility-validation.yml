@@ -2,13 +2,7 @@ name: Compatibility Validation
 
 on:
   push:
-    branches:
-      - gtk4
-      - master
   pull_request:
-    branches:
-      - gtk4
-      - master
   workflow_dispatch:
 
 env:
