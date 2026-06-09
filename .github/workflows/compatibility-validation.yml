@@ -861,7 +861,7 @@ jobs:
 
       - name: Create distribution tarballs
         run: |
-          meson dist -C build --formats gztar,xztar
+          meson dist -C build --formats gztar,xztar --no-tests
 
       - name: Generate SHA256 checksums
         run: |
