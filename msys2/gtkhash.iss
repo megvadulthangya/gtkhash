@@ -1,26 +1,23 @@
 [Setup]
 AppName=GtkHash
-AppVersion=1.0-git
+AppVersion=1.5
 DefaultDirName={autopf}\GtkHash
 DefaultGroupName=GtkHash
-UninstallDisplayIcon={app}\bin\gtkhash.exe
-Compression=lzma2/max
+UninstallDisplayIcon={app}\gtkhash.exe
+Compression=lzma2
 SolidCompression=yes
 OutputDir=.
 OutputBaseFilename=gtkhash-installer
-ArchitecturesInstallIn64BitMode=x64
-DisableWelcomePage=no
-DisableDirPage=no
 
 [Files]
-; Beolvassa a bundle.sh által tökéletesen felépített dist mappa teljes tartalmát
-Source: "dist\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+Source: "dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-; Parancsikonok létrehozása a Start menüben és az Asztalon a megfelelő munkakönyvtárral
-Name: "{group}\GtkHash"; Filename: "{app}\bin\gtkhash.exe"; WorkingDir: "{app}\bin"
-Name: "{autodesktop}\GtkHash"; Filename: "{app}\bin\gtkhash.exe"; WorkingDir: "{app}\bin"
+Name: "{group}\GtkHash"; Filename: "{app}\gtkhash.exe"; WorkingDir: "{app}"
+Name: "{autodesktop}\GtkHash"; Filename: "{app}\gtkhash.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Run]
-; Opció a telepítés végén a program azonnali elindítására
-Filename: "{app}\bin\gtkhash.exe"; Description: "GtkHash indítása most"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\gtkhash.exe"; Description: "{cm:LaunchProgram,GtkHash}"; Flags: nowait postinstall skipifsilent
