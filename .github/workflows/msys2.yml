@@ -1,4 +1,4 @@
-name: msys2
+name: msys2-modern
 
 on:
   push:
@@ -13,12 +13,7 @@ jobs:
       matrix:
         sys:
           - mingw64
-# mingw-w64-i686-styrene is gone:
-#          - mingw32
-# Not supported by styrene:
-#          - ucrt64
-#          - clang64
-#          - clang32
+          - ucrt64  # A modern MSYS2 környezet, ami a Styrene-nel eddig nem működött!
     name: ${{ matrix.sys }}
     defaults:
       run:
@@ -38,30 +33,49 @@ jobs:
             git
             base-devel
             tree
+            zip
           pacboy: >-
             toolchain:p
-            styrene:p
+            gtk3:p
+            adwaita-icon-theme:p
+            libgcrypt:p
+            meson:p
 
-      - run: env
-
-      - name: Run makepkg-mingw
+      # A makepkg-mingw automatikusan lefuttatja a PKGBUILD-ben definiált check() fázist (meson test)
+      - name: Run makepkg-mingw (Build & Test)
         run: |
           git archive --prefix gtkhash/ -o msys2/mingw-w64-gtkhash/gtkhash.tar.gz HEAD
           cd msys2/mingw-w64-gtkhash
-          PKGEXT=.pkg.tar.xz makepkg-mingw --noconfirm --noprogressbar --syncdeps --clean --cleanbuild --force
-          tree
+          PKGEXT=.pkg.tar.xz makepkg-mingw --noconfirm --noprogressbar --syncdeps --clean --cleanbuild --force --install
 
-      - name: Run styrene
+      # Kigyűjti a gtkhash.exe-t, az összes szükséges MinGW DLL-t, ikonokat és a befordított sémákat
+      - name: Run Modern Bundle Script
         run: |
-          sed -i 's/SafeConfigParser/ConfigParser/' "$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/styrene/cmdline.py"
-          cd msys2/styrene
-          python3 -m styrene --pkg-dir=$(readlink -f ../mingw-w64-gtkhash) styrene.cfg
-          tree
+          chmod +x msys2/bundle.sh
+          ./msys2/bundle.sh
 
+      # Hordozható ZIP archívum létrehozása a kigyűjtött mappából
+      - name: Create ZIP Archive
+        run: |
+          cd msys2/dist
+          zip -r ../../gtkhash-${{ matrix.sys }}-portable.zip ./*
+
+      # Az Inno Setup natívan elérhető a Windows futtatón, cmd-ből hívjuk meg az ISCC-t
+      - name: Build Inno Setup Installer (.exe)
+        shell: cmd
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" msys2\gtkhash.iss
+
+      - name: Move Installer for Upload
+        shell: bash
+        run: |
+          mv msys2/gtkhash-installer.exe ./gtkhash-${{ matrix.sys }}-installer.exe
+
+      # Mindkét kész verziót (ZIP és EXE) feltöltjük artifactként
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.sys }}
+          name: gtkhash-${{ matrix.sys }}-packages
           if-no-files-found: error
           path: |
-            msys2/styrene/*-installer.exe
-            msys2/styrene/*-standalone.zip
+            gtkhash-${{ matrix.sys }}-portable.zip
+            gtkhash-${{ matrix.sys }}-installer.exe
