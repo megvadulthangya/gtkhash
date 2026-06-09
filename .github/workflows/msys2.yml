@@ -13,7 +13,7 @@ jobs:
       matrix:
         sys:
           - mingw64
-          - ucrt64  # A modern MSYS2 környezet, ami a Styrene-nel eddig nem működött!
+          - ucrt64
     name: ${{ matrix.sys }}
     defaults:
       run:
@@ -41,26 +41,23 @@ jobs:
             libgcrypt:p
             meson:p
 
-      # A makepkg-mingw automatikusan lefuttatja a PKGBUILD-ben definiált check() fázist (meson test)
-      - name: Run makepkg-mingw (Build & Test)
+      - name: Run makepkg-mingw (Build & Test & Install)
         run: |
           git archive --prefix gtkhash/ -o msys2/mingw-w64-gtkhash/gtkhash.tar.gz HEAD
           cd msys2/mingw-w64-gtkhash
-          PKGEXT=.pkg.tar.xz makepkg-mingw --noconfirm --noprogressbar --syncdeps --clean --cleanbuild --force --install
+          PKGEXT=.pkg.tar.xz makepkg-mingw --noconfirm --noprogressbar --syncdeps --clean --cleanbuild --force
+          pacman -U --noconfirm *.pkg.tar.xz
 
-      # Kigyűjti a gtkhash.exe-t, az összes szükséges MinGW DLL-t, ikonokat és a befordított sémákat
       - name: Run Modern Bundle Script
         run: |
           chmod +x msys2/bundle.sh
           ./msys2/bundle.sh
 
-      # Hordozható ZIP archívum létrehozása a kigyűjtött mappából
       - name: Create ZIP Archive
         run: |
           cd msys2/dist
           zip -r ../../gtkhash-${{ matrix.sys }}-portable.zip ./*
 
-      # Az Inno Setup natívan elérhető a Windows futtatón, cmd-ből hívjuk meg az ISCC-t
       - name: Build Inno Setup Installer (.exe)
         shell: cmd
         run: |
@@ -71,7 +68,6 @@ jobs:
         run: |
           mv msys2/gtkhash-installer.exe ./gtkhash-${{ matrix.sys }}-installer.exe
 
-      # Mindkét kész verziót (ZIP és EXE) feltöltjük artifactként
       - uses: actions/upload-artifact@v4
         with:
           name: gtkhash-${{ matrix.sys }}-packages
