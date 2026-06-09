@@ -6,47 +6,50 @@ rm -rf "$DEST"
 mkdir -p "$DEST/bin"
 mkdir -p "$DEST/share/glib-2.0/schemas"
 mkdir -p "$DEST/share/icons"
-mkdir -p "$DEST/lib"
+mkdir -p "$DEST/lib/gdk-pixbuf-2.0/2.10.0/loaders"
+mkdir -p "$DEST/lib/gio/modules"
 
-echo "=== 1. Fő bináris másolása ==="
 cp "${MINGW_PREFIX}/bin/gtkhash.exe" "$DEST/bin/"
 
-echo "=== 2. GLib helper binárisok másolása ==="
-# A GLib/GTK-nak szüksége van ezekre a folyamatkezeléshez Windows alatt
-cp "${MINGW_PREFIX}"/bin/gspawn-*-helper*.exe "$DEST/bin/" 2>/dev/null || true
+if [ -d "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0/2.10.0/loaders" ]; then
+    cp "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0/2.10.0/loaders"/*.dll "$DEST/lib/gdk-pixbuf-2.0/2.10.0/loaders/" 2>/dev/null || true
+    cp "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" "$DEST/lib/gdk-pixbuf-2.0/2.10.0/" 2>/dev/null || true
+    sed -i 's|"[^"]*/lib/gdk-pixbuf-2.0/|"lib/gdk-pixbuf-2.0/|g' "$DEST/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" 2>/dev/null || true
+fi
 
-echo "=== 3. DLL függőségek automatikus kigyűjtése ==="
-# Az ldd kimenetét soronként olvassuk, és cygpath-al konvertáljuk tiszta MSYS2 POSIX úttá.
-# Ez megoldja a Windows vs. Unix útvonal keveredési problémát.
-ldd "$DEST/bin/gtkhash.exe" | while read -r line; do
-    if [[ "$line" == *"=>"* ]]; then
-        raw_path=$(echo "$line" | sed -e 's/.*=> //' -e 's/ (0x.*)//' | tr -d '\r' | xargs)
-        if [ -n "$raw_path" ] && [ "$raw_path" != "not found" ]; then
-            # Uniformizálás (pl. /mingw64/bin/libgtk-3-0.dll formátumra)
-            posix_path=$(cygpath -u "$raw_path")
-            
-            # Csak a saját MinGW/UCRT prefixünkből származó függőségeket gyűjtjük ki
-            if [[ "$posix_path" == "${MINGW_PREFIX}"/* ]] && [ -f "$posix_path" ]; then
-                cp -n "$posix_path" "$DEST/bin/"
-            fi
-        fi
-    fi
-done
+if [ -d "${MINGW_PREFIX}/lib/gio/modules" ]; then
+    cp "${MINGW_PREFIX}/lib/gio/modules"/*.dll "$DEST/lib/gio/modules/" 2>/dev/null || true
+fi
 
-echo "=== 4. GSettings sémák másolása és befordítása ==="
-cp "${MINGW_PREFIX}"/share/glib-2.0/schemas/*.xml "$DEST/share/glib-2.0/schemas/"
+resolve_deps() {
+    local added=1
+    while [ $added -eq 1 ]; do
+        added=0
+        mapfile -t files < <(find "$DEST" -type f \( -name "*.exe" -o -name "*.dll" \))
+        for f in "${files[@]}"; do
+            mapfile -t deps < <(ldd "$f" 2>/dev/null | grep -i "${MINGW_PREFIX}/bin" | awk '{print $3}')
+            for d in "${deps[@]}"; do
+                if [ -n "$d" ] && [ "$d" != "not" ]; then
+                    posix_path=$(cygpath -u "$d" 2>/dev/null || echo "$d")
+                    basename_d=$(basename "$posix_path")
+                    if [ -f "$posix_path" ] && [ ! -f "$DEST/bin/$basename_d" ]; then
+                        cp "$posix_path" "$DEST/bin/"
+                        added=1
+                    fi
+                fi
+            done
+        done
+    done
+}
+
+resolve_deps
+
+cp "${MINGW_PREFIX}"/share/glib-2.0/schemas/*.xml "$DEST/share/glib-2.0/schemas/" 2>/dev/null || true
 glib-compile-schemas "$DEST/share/glib-2.0/schemas/"
 
-echo "=== 5. GTK Ikonok és Erőforrások másolása ==="
 if [ -d "${MINGW_PREFIX}/share/icons/hicolor" ]; then
     cp -r "${MINGW_PREFIX}/share/icons/hicolor" "$DEST/share/icons/"
 fi
 if [ -d "${MINGW_PREFIX}/share/icons/Adwaita" ]; then
     cp -r "${MINGW_PREFIX}/share/icons/Adwaita" "$DEST/share/icons/"
 fi
-
-if [ -d "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0" ]; then
-    cp -r "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0" "$DEST/lib/"
-fi
-
-echo "=== A futtatókörnyezet összeállítása sikeres! ==="
