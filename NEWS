@@ -1,92 +1,102 @@
 Summary of changes for each GtkHash release:
 
+1.6???
+    * Added full GTK4 support alongside GTK3 via conditional compilation
+    * Integrated GMenu and GAction for modern GTK4 application menus
+    * Added support for mbedtls v3 and Nettle cryptographic backends
+    * Implemented dynamic runtime cryptographic library selection
+    * Added multi-file and folder hashing support across file manager extensions (Caja, Thunar, Nautilus, Nemo) via standalone application routing
+    * Completed full Meson build system definitions alongside Autotools
+    * Expanded CI validation matrix via GitHub Actions for modern Linux distributions
+    * Updated internal core APIs to modern GLib equivalents
+
 1.5 (2022-09-21)
-	* Added xxHash XXH64
-	* Added HMAC-BLAKE2s and HMAC-BLAKE2b (#86)
-	* Made hashing start automatically in file manager extensions (#103)
-	* Added Meson build system (#116, #140)
-	* Removed dependency on intltool
-	* Removed Peony extension as Peony 2+ is incompatible
+    * Added xxHash XXH64
+    * Added HMAC-BLAKE2s and HMAC-BLAKE2b (#86)
+    * Made hashing start automatically in file manager extensions (#103)
+    * Added Meson build system (#116, #140)
+    * Removed dependency on intltool
+    * Removed Peony extension as Peony 2+ is incompatible
 
 1.4 (2020-07-11)
-	* Added CRC32C
-	* Replaced the word "Digest" with "Checksum" in some places (#40)
-	* Added a separate hash button for each function (#50)
-	* Added preference to show/hide HMAC feature
-	* Fixed translations not showing on Windows and Snap package
-	* Reduced Windows install size
+    * Added CRC32C
+    * Replaced the word "Digest" with "Checksum" in some places (#40)
+    * Added a separate hash button for each function (#50)
+    * Added preference to show/hide HMAC feature
+    * Fixed translations not showing on Windows and Snap package
+    * Reduced Windows install size
 
 1.3 (2020-05-25)
-	* Fixed crash when program is closed (#47)
-	* Added vertical scrolling to File/Text view (#35)
-	* Added clipboard paste button to Check input
-	* Added Windows compatibility
-	* Removed support for GTK 2
+    * Fixed crash when program is closed (#47)
+    * Added vertical scrolling to File/Text view (#35)
+    * Added clipboard paste button to Check input
+    * Added Windows compatibility
+    * Removed support for GTK 2
 
 1.2 (2018-11-27)
-	* Added compatibility for Thunar 1.7
-	* Added optional Peony (UKUI file manager) extension
+    * Added compatibility for Thunar 1.7
+    * Added optional Peony (UKUI file manager) extension
 
 1.1.1 (2017-11-01)
-	* Fixed bug in loading user preferences
+    * Fixed bug in loading user preferences
 
 1.1 (2017-03-12)
-	* Removed internal BLAKE2 code and added option to use libb2 instead
-	* Added OpenSSL-1.1 as a BLAKE2b/BLAKE2s provider
-	* Removed PolarSSL support (replaced by mbed TLS)
+    * Removed internal BLAKE2 code and added option to use libb2 instead
+    * Added OpenSSL-1.1 as a BLAKE2b/BLAKE2s provider
+    * Removed PolarSSL support (replaced by mbed TLS)
 
 1.0.1 (2017-03-02)
-	* Fixed crash when certain Linux kernel crypto modules aren't loaded
-	* Fixed plugin crash when viewing file properties in Thunar
-	* Other bug fixes
+    * Fixed crash when certain Linux kernel crypto modules aren't loaded
+    * Fixed plugin crash when viewing file properties in Thunar
+    * Other bug fixes
 
 1.0 (2016-11-16)
-	* Added feature for checking digests from files (md5sum, sfv, etc.)
-	* Added commandline option for enabling hash functions by name
-	* Added Caja (MATE file manager) extension
-	* Added BLAKE2 hash functions
-	* Added support for mbed TLS
-	* Switched to use GTK 3 by default
-	* Added desktop menu entry and icon
+    * Added feature for checking digests from files (md5sum, sfv, etc.)
+    * Added commandline option for enabling hash functions by name
+    * Added Caja (MATE file manager) extension
+    * Added BLAKE2 hash functions
+    * Added support for mbed TLS
+    * Switched to use GTK 3 by default
+    * Added desktop menu entry and icon
 
 0.7.0 (2013-10-30)
-	* Added optional Nemo (Cinnamon file manager) extension
-	* Added more commandline options
-	* Added support for PolarSSL
-	* Added support for Nettle
-	* UI bug fixes
+    * Added optional Nemo (Cinnamon file manager) extension
+    * Added more commandline options
+    * Added support for PolarSSL
+    * Added support for Nettle
+    * UI bug fixes
 
 0.6.0 (2011-12-14)
-	* Added "Check" feature for comparing digests
-	* Added HMAC support
-	* Added MD6 hash function
-	* Switched from GConf to GSettings
+    * Added "Check" feature for comparing digests
+    * Added HMAC support
+    * Added MD6 hash function
+    * Switched from GConf to GSettings
 
 0.5.0 (2011-10-31)
-	* Improved hashing speed on SMP systems
-	* Added support for libcrypto
+    * Improved hashing speed on SMP systems
+    * Added support for libcrypto
 
 0.4.0 (2011-10-26)
-	* Added support for hashing non-local files using GIO
-	* Made mhash an optional dependency
-	* Added optional support for other hash libraries/interfaces
-	* Added Digest Format option
-	* Added optional Thunar (Xfce file manager) plugin
-	* Added support for GTK 3
-	* General usability improvements
+    * Added support for hashing non-local files using GIO
+    * Made mhash an optional dependency
+    * Added optional support for other hash libraries/interfaces
+    * Added Digest Format option
+    * Added optional Thunar (Xfce file manager) plugin
+    * Added support for GTK 3
+    * General usability improvements
 
 0.3.0 (2009-11-22)
-	* Added optional Nautilus (GNOME file manager) extension
+    * Added optional Nautilus (GNOME file manager) extension
 
 0.2.1 (2008-12-31)
-	* Fixed progress bar display for large files
-	* Removed dependency on libglade
+    * Fixed progress bar display for large files
+    * Removed dependency on libglade
 
 0.2.0 (2007-08-14)
-	* Added file list mode for hashing multiple files
+    * Added file list mode for hashing multiple files
 
 0.1.1 (2007-07-21)
-	* Added gettext support
+    * Added gettext support
 
 0.1.0 (2007-06-29)
-	* Initial release
+    * Initial release

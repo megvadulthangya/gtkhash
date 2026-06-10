@@ -30,16 +30,16 @@ version.
 
 Required Dependencies
 -------------
-* GTK 3.18
+* GTK 3.18 or GTK 4.0
 * GLib 2.48
 
 Optional Dependencies
 ---------------------
 * Libgcrypt (default)
 * libb2 (default)
-* Nettle
+* Nettle (fully integrated)
 * OpenSSL
-* mbed TLS
+* mbed TLS (v3 compatible)
 * Linux kernel AF_ALG
 
 See `./configure --help` for the full list of build options.
@@ -49,10 +49,13 @@ File Manager Extension
 ![Screenshot](screenshots/gtkhash-nemo-properties.png)
 
 Adds a Hash feature to File Properties in:
-* Caja (MATE)
-* Nautilus (GNOME)
-* Nemo (Cinnamon)
-* Thunar (Xfce)
+* Caja (MATE) – GTK3 only
+* Nautilus (GNOME) – GTK3 and GTK4 (context menu only)
+* Nemo (Cinnamon) – GTK3 only
+* Thunar (Xfce) – GTK3 only
+
+Multi-file and folder hashing is seamlessly supported by passing the URIs
+directly to the standalone GtkHash application.
 
 Translations
 ------------
