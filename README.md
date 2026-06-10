@@ -54,8 +54,9 @@ Adds a Hash feature to File Properties in:
 * Nemo (Cinnamon) – GTK3 only
 * Thunar (Xfce) – GTK3 only
 
-Multi-file and folder hashing is seamlessly supported by passing the URIs
-directly to the standalone GtkHash application.
+**How to use:**
+* **Context Menu (Works everywhere):** Select any file, multiple files, or folders, right-click, and choose **GtkHash** from the context menu. The application will open and process your selection automatically.
+* **Properties Tab (GTK3 only):** Alternatively, for a single file, right-click, select *Properties*, and use the Checksums tab.
 
 Translations
 ------------
