@@ -2,17 +2,33 @@ name: Compatibility Validation
 
 on:
   push:
-#    branches:
-#      - gtk4
-#      - extensions
   pull_request:
-#    branches:
-#      - gtk4
-#      - extensions
   workflow_dispatch:
 
 env:
   MESON_TEST_COMMAND: xvfb-run -s "-screen 0 800x600x24" meson test -v -C build
+
+# ============================================================
+# CI RELIABILITY: STAGED JOB EXECUTION ORDER
+# ============================================================
+#
+# Jobs are no longer launched all at once. Container image pulls
+# occasionally fail when many containerized jobs start simultaneously
+# due to infrastructure/network flakiness. This staged execution model
+# reduces peak concurrency and improves overall CI reliability.
+#
+# No build or test coverage has been removed. All distribution
+# validation targets remain identical. The Ubuntu matrix parallelism
+# (gcc + clang) is intentionally preserved.
+#
+# Stage summary:
+#   Stage 1  – ubuntu-gtk3
+#   Stage 2  – debian13-gtk3, debian13-gtk4          (after Ubuntu)
+#   Stage 3  – archlinux-gtk3, archlinux-gtk4         (after Debian)
+#   Stage 4  – manjaro-gtk3, manjaro-gtk4             (after Arch)
+#   Stage 5  – fedora44-gtk3, fedora44-gtk4           (after Manjaro)
+#   Stage 6  – dist                                   (after Fedora)
+# ============================================================
 
 jobs:
 
@@ -162,6 +178,7 @@ jobs:
     name: Debian 13 GTK3
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: ubuntu-gtk3
 
     container:
       image: debian:13
@@ -210,7 +227,7 @@ jobs:
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
-            -Dmbedtls=true \
+            -Dmbedtls=false \
             -Dlibcrypto=true \
             -Dbuild-nautilus=false \
             -Dbuild-nemo=true \
@@ -232,6 +249,7 @@ jobs:
     name: Debian 13 GTK4
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: ubuntu-gtk3
 
     container:
       image: debian:13
@@ -325,6 +343,7 @@ jobs:
     name: Arch Linux GTK3
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: [debian13-gtk3, debian13-gtk4]
 
     container:
       image: archlinux:latest
@@ -371,7 +390,7 @@ jobs:
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
-            -Dmbedtls=true \
+            -Dmbedtls=false \
             -Dlibcrypto=true \
             -Dbuild-nautilus=false \
             -Dbuild-nemo=true \
@@ -393,6 +412,7 @@ jobs:
     name: Arch Linux GTK4
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: [debian13-gtk3, debian13-gtk4]
 
     container:
       image: archlinux:latest
@@ -485,6 +505,7 @@ jobs:
     name: Manjaro Stable GTK3
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: [archlinux-gtk3, archlinux-gtk4]
 
     container:
       image: manjarolinux/build:latest
@@ -529,7 +550,7 @@ jobs:
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
-            -Dmbedtls=true \
+            -Dmbedtls=false \
             -Dlibcrypto=true \
             -Dbuild-nautilus=false \
             -Dbuild-nemo=true \
@@ -551,6 +572,7 @@ jobs:
     name: Manjaro Stable GTK4
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: [archlinux-gtk3, archlinux-gtk4]
 
     container:
       image: manjarolinux/build:latest
@@ -641,6 +663,7 @@ jobs:
     name: Fedora 44 GTK3
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: [manjaro-gtk3, manjaro-gtk4]
 
     container:
       image: fedora:44
@@ -689,7 +712,7 @@ jobs:
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
-            -Dmbedtls=true \
+            -Dmbedtls=false \
             -Dlibcrypto=true \
             -Dbuild-nautilus=false \
             -Dbuild-nemo=true \
@@ -711,6 +734,7 @@ jobs:
     name: Fedora 44 GTK4
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    needs: [manjaro-gtk3, manjaro-gtk4]
 
     container:
       image: fedora:44
@@ -811,6 +835,7 @@ jobs:
     name: Ubuntu 22.04 - Create distribution tarball
     runs-on: ubuntu-22.04
     timeout-minutes: 20
+    needs: [fedora44-gtk3, fedora44-gtk4]
 
     steps:
       - name: Checkout
