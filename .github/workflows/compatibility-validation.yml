@@ -2,13 +2,13 @@ name: Compatibility Validation
 
 on:
   push:
-    branches:
-      - gtk4
-      - extensions
+#    branches:
+#      - gtk4
+#      - extensions
   pull_request:
-    branches:
-      - gtk4
-      - extensions
+#    branches:
+#      - gtk4
+#      - extensions
   workflow_dispatch:
 
 env:
@@ -799,3 +799,80 @@ jobs:
           xvfb-run -s "-screen 0 800x600x24" \
             dbus-run-session -- \
             meson test -v -C build --num-processes 1
+
+
+
+            
+            
+  # ============================================================
+  # DISTRIBUTION TARBALL
+  # ============================================================
+  dist:
+    name: Ubuntu 22.04 - Create distribution tarball
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            meson \
+            ninja-build \
+            gettext \
+            appstream \
+            pkg-config \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            libgcrypt20-dev \
+            nettle-dev \
+            libb2-dev \
+            libmbedtls-dev \
+            libssl-dev \
+            linux-libc-dev \
+            librsvg2-bin \
+            libxml2-utils \
+            at-spi2-core \
+            xvfb \
+            gnome-icon-theme \
+            libnautilus-extension-dev \
+            libnemo-extension-dev \
+            libcaja-extension-dev \
+            libthunarx-3-dev
+
+      - name: Meson setup
+        run: |
+          meson setup build \
+            --buildtype=debug \
+            -Dglib-checksums=true \
+            -Dlinux-crypto=true \
+            -Dnettle=true \
+            -Dmbedtls=true \
+            -Dlibcrypto=true \
+            -Dbuild-nautilus=true \
+            -Dbuild-nemo=true \
+            -Dbuild-caja=true \
+            -Dbuild-thunar=true
+
+      - name: Create distribution tarballs
+        run: |
+          meson dist -C build --formats gztar,xztar --no-tests
+
+      - name: Generate SHA256 checksums
+        run: |
+          cd build/meson-dist
+          for f in *.tar.gz *.tar.xz; do
+            sha256sum "$f" > "${f}.sha256"
+          done
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gtkhash-dist-${{ github.sha }}
+          path: build/meson-dist/*
+          retention-days: 90
