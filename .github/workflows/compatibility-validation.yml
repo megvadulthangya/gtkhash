@@ -227,7 +227,7 @@ jobs:
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
-            -Dmbedtls=false \
+            -Dmbedtls=true \
             -Dlibcrypto=true \
             -Dbuild-nautilus=false \
             -Dbuild-nemo=true \
@@ -390,7 +390,7 @@ jobs:
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
-            -Dmbedtls=false \
+            -Dmbedtls=true \
             -Dlibcrypto=true \
             -Dbuild-nautilus=false \
             -Dbuild-nemo=true \
@@ -550,7 +550,7 @@ jobs:
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
-            -Dmbedtls=false \
+            -Dmbedtls=true \
             -Dlibcrypto=true \
             -Dbuild-nautilus=false \
             -Dbuild-nemo=true \
@@ -712,7 +712,7 @@ jobs:
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
-            -Dmbedtls=false \
+            -Dmbedtls=true \
             -Dlibcrypto=true \
             -Dbuild-nautilus=false \
             -Dbuild-nemo=true \
