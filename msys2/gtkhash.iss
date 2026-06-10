@@ -8,6 +8,8 @@ Compression=lzma2
 SolidCompression=yes
 OutputDir=.
 OutputBaseFilename=gtkhash-installer
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
 
 [Files]
 Source: "dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
