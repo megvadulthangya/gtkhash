@@ -34,13 +34,15 @@ resolve_deps() {
     local added=1
     while [ $added -eq 1 ]; do
         added=0
-        mapfile -t files < <(find "$DEST/bin" -type f \( -name "*.exe" -o -name "*.dll" \))
+        # Scan the ENTIRE $DEST tree to catch dependencies of GTK modules/loaders in lib/
+        mapfile -t files < <(find "$DEST" -type f \( -name "*.exe" -o -name "*.dll" \))
         for f in "${files[@]}"; do
             mapfile -t deps < <(ldd "$f" 2>/dev/null | grep -i "${MINGW_PREFIX}/bin" | awk '{print $3}')
             for d in "${deps[@]}"; do
                 if [ -n "$d" ] && [ "$d" != "not" ]; then
                     posix_path=$(cygpath -u "$d" 2>/dev/null || echo "$d")
                     basename_d=$(basename "$posix_path")
+                    # Place all resolved dependencies strictly into the bin/ directory
                     if [ -f "$posix_path" ] && [ ! -f "$DEST/bin/$basename_d" ]; then
                         cp "$posix_path" "$DEST/bin/"
                         added=1
