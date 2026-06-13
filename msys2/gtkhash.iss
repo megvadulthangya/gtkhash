@@ -3,7 +3,7 @@ AppName=GtkHash
 AppVersion=1.5
 DefaultDirName={autopf}\GtkHash
 DefaultGroupName=GtkHash
-UninstallDisplayIcon={app}\org.gtkhash.gtkhash.exe
+UninstallDisplayIcon={app}\bin\gtkhash.ico
 Compression=lzma2
 SolidCompression=yes
 OutputDir=.
@@ -15,11 +15,11 @@ ArchitecturesInstallIn64BitMode=x64
 Source: "dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\GtkHash"; Filename: "{app}\org.gtkhash.gtkhash.exe"; WorkingDir: "{app}\bin"
-Name: "{autodesktop}\GtkHash"; Filename: "{app}\org.gtkhash.gtkhash.exe"; WorkingDir: "{app}\bin"; Tasks: desktopicon
+Name: "{group}\GtkHash"; Filename: "{app}\bin\org.gtkhash.gtkhash.exe"; WorkingDir: "{app}\bin"; IconFilename: "{app}\bin\gtkhash.ico"
+Name: "{autodesktop}\GtkHash"; Filename: "{app}\bin\org.gtkhash.gtkhash.exe"; WorkingDir: "{app}\bin"; IconFilename: "{app}\bin\gtkhash.ico"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Run]
-Filename: "{app}\org.gtkhash.gtkhash.exe"; Description: "{cm:LaunchProgram,GtkHash}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\bin\org.gtkhash.gtkhash.exe"; Description: "{cm:LaunchProgram,GtkHash}"; Flags: nowait postinstall skipifsilent
