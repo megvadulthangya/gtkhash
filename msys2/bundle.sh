@@ -87,3 +87,16 @@ if [ -d "${MINGW_PREFIX}/share/locale" ]; then
         cp "$mo_file" "$dest_dir/"
     done
 fi
+
+# 7. Copy project license & readme (as .txt for Windows) from repository root
+if [ -f "../COPYING" ]; then
+    cp "../COPYING" "$DEST/COPYING.txt"
+else
+    echo "WARNING: ../COPYING not found, license will be omitted from installer"
+fi
+
+if [ -f "../README.md" ]; then
+    cp "../README.md" "$DEST/README.txt"
+else
+    echo "WARNING: ../README.md not found, readme will be omitted from installer"
+fi
