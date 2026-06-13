@@ -6,15 +6,17 @@ rm -rf "$DEST"
 mkdir -p "$DEST/bin"
 mkdir -p "$DEST/share/glib-2.0/schemas"
 mkdir -p "$DEST/share/icons"
+mkdir -p "$DEST/share/locale"
 mkdir -p "$DEST/lib/gdk-pixbuf-2.0/2.10.0/loaders"
 mkdir -p "$DEST/lib/gio/modules"
 
-# 1. Main executable placed in the bin/ subfolder
+# 1. Main executable placed in the bin/ subfolder (Untouched, console-enabled)
 cp "${MINGW_PREFIX}/bin/gtkhash.exe" "$DEST/bin/"
 
-# 2. Patch PE subsystem to "windows" (GUI) – suppresses the background console window
+# 2. Create the clean GUI launcher in the root folder (No console window)
+cp "${MINGW_PREFIX}/bin/gtkhash.exe" "$DEST/org.gtkhash.gtkhash.exe"
 if command -v objcopy >/dev/null 2>&1; then
-    objcopy --subsystem windows "$DEST/bin/gtkhash.exe" || true
+    objcopy --subsystem windows "$DEST/org.gtkhash.gtkhash.exe" || true
 fi
 
 # 3. Copy GTK loaders and modules into their required subdirectories
@@ -22,7 +24,7 @@ if [ -d "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0/2.10.0/loaders" ]; then
     cp "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0/2.10.0/loaders"/*.dll "$DEST/lib/gdk-pixbuf-2.0/2.10.0/loaders/" 2>/dev/null || true
     cp "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" "$DEST/lib/gdk-pixbuf-2.0/2.10.0/" 2>/dev/null || true
     # Make the cache paths relative so the loaders are found at runtime
-    sed -i 's|"[^"]*/lib/gdk-pixbuf-2.0/|"lib/gdk-pixbuf-2.0/|g' "$DEST/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" 2>/dev/null || true
+    sed -i 's|"[^"]*/lib/gdk-pixbuf-2.0/|\\lib\\gdk-pixbuf-2.0\\|g' "$DEST/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" 2>/dev/null || true
 fi
 
 if [ -d "${MINGW_PREFIX}/lib/gio/modules" ]; then
@@ -55,13 +57,21 @@ resolve_deps() {
 
 resolve_deps
 
-# 5. GTK schemas and icon theme resources remain correctly mapped
+# 5. Copy GTK schemas, asset icons, and target locales
 cp "${MINGW_PREFIX}"/share/glib-2.0/schemas/*.xml "$DEST/share/glib-2.0/schemas/" 2>/dev/null || true
 glib-compile-schemas "$DEST/share/glib-2.0/schemas/"
 
-if [ -d "${MINGW_PREFIX}/share/icons/hicolor" ]; then
-    cp -r "${MINGW_PREFIX}/share/icons/hicolor" "$DEST/share/icons/"
+# Robust copy of all icon assets (including Adwaita and hicolor containing GtkHash icons)
+if [ -d "${MINGW_PREFIX}/share/icons" ]; then
+    cp -r "${MINGW_PREFIX}/share/icons"/* "$DEST/share/icons/" 2>/dev/null || true
 fi
-if [ -d "${MINGW_PREFIX}/share/icons/Adwaita" ]; then
-    cp -r "${MINGW_PREFIX}/share/icons/Adwaita" "$DEST/share/icons/"
+
+# Target copy of localization (.mo) files to restore translations and proper bundle weight
+if [ -d "${MINGW_PREFIX}/share/locale" ]; then
+    find "${MINGW_PREFIX}/share/locale" -type f -name "gtkhash.mo" | while read -r mo_file; do
+        relative_path="${mo_file#${MINGW_PREFIX}/share/locale/}"
+        dest_dir="$DEST/share/locale/$(dirname "$relative_path")"
+        mkdir -p "$dest_dir"
+        cp "$mo_file" "$dest_dir/"
+    done
 fi
