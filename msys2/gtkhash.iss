@@ -5,6 +5,7 @@ DefaultDirName={autopf}\GtkHash
 DefaultGroupName=GtkHash
 SetupIconFile=dist\bin\gtkhash.ico
 UninstallDisplayIcon={app}\bin\gtkhash.ico
+LicenseFile=dist\COPYING.txt
 Compression=lzma2
 SolidCompression=yes
 OutputDir=.
