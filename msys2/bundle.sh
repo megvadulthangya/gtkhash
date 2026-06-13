@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-DEST="dist"                        # align with Inno Setup source path
+DEST="dist"
 rm -rf "$DEST"
 mkdir -p "$DEST/bin"
 mkdir -p "$DEST/share/glib-2.0/schemas"
@@ -10,41 +10,33 @@ mkdir -p "$DEST/share/locale"
 mkdir -p "$DEST/lib/gdk-pixbuf-2.0/2.10.0/loaders"
 mkdir -p "$DEST/lib/gio/modules"
 
-# 1. Main console executable
+# 1. Main executable placed in the bin/ subfolder (Untouched, console-enabled)
 cp "${MINGW_PREFIX}/bin/gtkhash.exe" "$DEST/bin/"
 
-# 2. GUI launcher (subsystem:windows)
+# 2. Create the GUI launcher inside the bin/ folder next to its DLLs
 cp "${MINGW_PREFIX}/bin/gtkhash.exe" "$DEST/bin/org.gtkhash.gtkhash.exe"
 if command -v objcopy >/dev/null 2>&1; then
     objcopy --subsystem windows "$DEST/bin/org.gtkhash.gtkhash.exe"
 fi
 
-# 3. STRICT ICO generation – no silent fallbacks
+# 3. Generate a native Windows .ico file strictly. Fails CI if imagemagick is missing.
 ICON_SRC="${MINGW_PREFIX}/share/icons/hicolor/256x256/apps/org.gtkhash.gtkhash.png"
 ICON_DST="$DEST/bin/gtkhash.ico"
-
-if [ ! -f "$ICON_SRC" ]; then
+if [ -f "$ICON_SRC" ]; then
+    if command -v magick >/dev/null 2>&1; then
+        magick "$ICON_SRC" "$ICON_DST"
+    elif command -v convert >/dev/null 2>&1; then
+        convert "$ICON_SRC" "$ICON_DST"
+    else
+        echo "FATAL: ImageMagick not found. Install mingw-w64-x86_64-imagemagick in GitHub Actions."
+        exit 1
+    fi
+else
     echo "FATAL: Source icon not found at $ICON_SRC"
     exit 1
 fi
 
-# Prefer 'magick' (modern ImageMagick), then 'convert' (legacy)
-if command -v magick >/dev/null 2>&1; then
-    magick "$ICON_SRC" "$ICON_DST"
-elif command -v convert >/dev/null 2>&1; then
-    convert "$ICON_SRC" "$ICON_DST"
-else
-    echo "FATAL: ImageMagick not found. Install mingw-w64-x86_64-imagemagick in GitHub Actions."
-    exit 1
-fi
-
-# Double-check the output was actually created
-if [ ! -f "$ICON_DST" ]; then
-    echo "FATAL: Icon conversion failed – output file $ICON_DST does not exist"
-    exit 1
-fi
-
-# 4. Copy GTK loaders and modules
+# 4. Copy GTK loaders and modules into their required subdirectories
 if [ -d "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0/2.10.0/loaders" ]; then
     cp "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0/2.10.0/loaders"/*.dll "$DEST/lib/gdk-pixbuf-2.0/2.10.0/loaders/" 2>/dev/null || true
     cp "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" "$DEST/lib/gdk-pixbuf-2.0/2.10.0/" 2>/dev/null || true
@@ -55,7 +47,7 @@ if [ -d "${MINGW_PREFIX}/lib/gio/modules" ]; then
     cp "${MINGW_PREFIX}/lib/gio/modules"/*.dll "$DEST/lib/gio/modules/" 2>/dev/null || true
 fi
 
-# 5. Recursive DLL resolution
+# 5. Recursively resolve and copy all dynamically linked DLLs to the bin/ directory
 resolve_deps() {
     local added=1
     while [ $added -eq 1 ]; do
@@ -79,7 +71,7 @@ resolve_deps() {
 
 resolve_deps
 
-# 6. Schemas, icons, locales
+# 6. Copy GTK schemas, asset icons, and target locales
 cp "${MINGW_PREFIX}"/share/glib-2.0/schemas/*.xml "$DEST/share/glib-2.0/schemas/" 2>/dev/null || true
 glib-compile-schemas "$DEST/share/glib-2.0/schemas/"
 
