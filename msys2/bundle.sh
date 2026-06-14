@@ -10,16 +10,13 @@ mkdir -p "$DEST/share/locale"
 mkdir -p "$DEST/lib/gdk-pixbuf-2.0/2.10.0/loaders"
 mkdir -p "$DEST/lib/gio/modules"
 
-# 1. Main executable placed in the bin/ subfolder (Untouched, console-enabled)
-cp "${MINGW_PREFIX}/bin/gtkhash.exe" "$DEST/bin/"
-
-# 2. Create the GUI launcher inside the bin/ folder next to its DLLs
-cp "${MINGW_PREFIX}/bin/gtkhash.exe" "$DEST/bin/org.gtkhash.gtkhash.exe"
+# 1. Main executable placed in the bin/ subfolder and converted strictly to GUI mode
+cp "${MINGW_PREFIX}/bin/gtkhash.exe" "$DEST/bin/gtkhash.exe"
 if command -v objcopy >/dev/null 2>&1; then
-    objcopy --subsystem windows "$DEST/bin/org.gtkhash.gtkhash.exe"
+    objcopy --subsystem windows "$DEST/bin/gtkhash.exe"
 fi
 
-# 3. Generate a native Windows .ico file strictly. Fails CI if imagemagick is missing.
+# 2. Generate a native Windows .ico file strictly. Fails CI if imagemagick is missing.
 ICON_SRC="${MINGW_PREFIX}/share/icons/hicolor/256x256/apps/org.gtkhash.gtkhash.png"
 ICON_DST="$DEST/bin/gtkhash.ico"
 if [ -f "$ICON_SRC" ]; then
@@ -36,7 +33,7 @@ else
     exit 1
 fi
 
-# 4. Copy GTK loaders and modules into their required subdirectories
+# 3. Copy GTK loaders and modules into their required subdirectories
 if [ -d "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0/2.10.0/loaders" ]; then
     cp "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0/2.10.0/loaders"/*.dll "$DEST/lib/gdk-pixbuf-2.0/2.10.0/loaders/" 2>/dev/null || true
     cp "${MINGW_PREFIX}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" "$DEST/lib/gdk-pixbuf-2.0/2.10.0/" 2>/dev/null || true
@@ -47,7 +44,7 @@ if [ -d "${MINGW_PREFIX}/lib/gio/modules" ]; then
     cp "${MINGW_PREFIX}/lib/gio/modules"/*.dll "$DEST/lib/gio/modules/" 2>/dev/null || true
 fi
 
-# 5. Recursively resolve and copy all dynamically linked DLLs to the bin/ directory
+# 4. Recursively resolve and copy all dynamically linked DLLs to the bin/ directory
 resolve_deps() {
     local added=1
     while [ $added -eq 1 ]; do
@@ -71,7 +68,7 @@ resolve_deps() {
 
 resolve_deps
 
-# 6. Copy GTK schemas, asset icons, and target locales
+# 5. Copy GTK schemas, asset icons, and target locales
 cp "${MINGW_PREFIX}"/share/glib-2.0/schemas/*.xml "$DEST/share/glib-2.0/schemas/" 2>/dev/null || true
 glib-compile-schemas "$DEST/share/glib-2.0/schemas/"
 
@@ -88,7 +85,7 @@ if [ -d "${MINGW_PREFIX}/share/locale" ]; then
     done
 fi
 
-# 7. Copy project license & readme (as .txt for Windows) from repository root
+# 6. Copy project license & readme (as .txt for Windows) from repository root
 if [ -f "../COPYING" ]; then
     cp "../COPYING" "$DEST/COPYING.txt"
 else
@@ -101,7 +98,7 @@ else
     echo "WARNING: ../README.md not found, readme will be omitted from installer"
 fi
 
-# 8. Build native C launcher for root directory with dynamic absolute path resolution
+# 7. Build native C launcher for root directory with dynamic absolute path resolution
 cat << 'EOF' > launcher.c
 #include <windows.h>
 #include <string.h>
@@ -118,7 +115,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     char targetPath[MAX_PATH];
     char targetDir[MAX_PATH];
-    snprintf(targetPath, sizeof(targetPath), "%s\\bin\\org.gtkhash.gtkhash.exe", exePath);
+    snprintf(targetPath, sizeof(targetPath), "%s\\bin\\gtkhash.exe", exePath);
     snprintf(targetDir, sizeof(targetDir), "%s\\bin", exePath);
 
     SHELLEXECUTEINFOA sei = {0};
