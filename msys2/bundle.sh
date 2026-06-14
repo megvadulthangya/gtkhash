@@ -100,3 +100,35 @@ if [ -f "../README.md" ]; then
 else
     echo "WARNING: ../README.md not found, readme will be omitted from installer"
 fi
+
+# 8. Build native C launcher for root directory (Resolves portable path issues)
+cat << 'EOF' > launcher.c
+#include <windows.h>
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+                   LPSTR lpCmdLine, int nCmdShow) {
+    SHELLEXECUTEINFO sei = {0};
+    sei.cbSize = sizeof(SHELLEXECUTEINFO);
+    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+    sei.hwnd = NULL;
+    sei.lpVerb = "open";
+    sei.lpFile = "bin\\org.gtkhash.gtkhash.exe";
+    sei.lpParameters = lpCmdLine;
+    sei.lpDirectory = "bin";
+    sei.nShow = nCmdShow;
+
+    if (ShellExecuteEx(&sei)) {
+        return 0;
+    }
+    return 1;
+}
+EOF
+
+# Embed the .ico as the default application icon (resource ID 1)
+echo '1 ICON "dist/bin/gtkhash.ico"' > launcher.rc
+
+windres launcher.rc -O coff -o launcher.res
+gcc -mwindows launcher.c launcher.res -o "$DEST/GtkHash.exe"
+
+# Clean up build artifacts
+rm launcher.c launcher.rc launcher.res
