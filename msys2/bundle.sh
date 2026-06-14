@@ -101,34 +101,44 @@ else
     echo "WARNING: ../README.md not found, readme will be omitted from installer"
 fi
 
-# 8. Build native C launcher for root directory (Resolves portable path issues)
+# 8. Build native C launcher for root directory with dynamic absolute path resolution
 cat << 'EOF' > launcher.c
 #include <windows.h>
+#include <string.h>
+#include <stdio.h>
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine, int nCmdShow) {
-    SHELLEXECUTEINFO sei = {0};
-    sei.cbSize = sizeof(SHELLEXECUTEINFO);
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    char exePath[MAX_PATH];
+    GetModuleFileNameA(NULL, exePath, MAX_PATH);
+    
+    char *lastSlash = strrchr(exePath, '\\');
+    if (lastSlash) {
+        *lastSlash = '\0';
+    }
+
+    char targetPath[MAX_PATH];
+    char targetDir[MAX_PATH];
+    snprintf(targetPath, sizeof(targetPath), "%s\\bin\\org.gtkhash.gtkhash.exe", exePath);
+    snprintf(targetDir, sizeof(targetDir), "%s\\bin", exePath);
+
+    SHELLEXECUTEINFOA sei = {0};
+    sei.cbSize = sizeof(SHELLEXECUTEINFOA);
     sei.fMask = SEE_MASK_NOCLOSEPROCESS;
     sei.hwnd = NULL;
     sei.lpVerb = "open";
-    sei.lpFile = "bin\\org.gtkhash.gtkhash.exe";
+    sei.lpFile = targetPath;
     sei.lpParameters = lpCmdLine;
-    sei.lpDirectory = "bin";
+    sei.lpDirectory = targetDir;
     sei.nShow = nCmdShow;
 
-    if (ShellExecuteEx(&sei)) {
+    if (ShellExecuteExA(&sei)) {
+        CloseHandle(sei.hProcess);
         return 0;
     }
     return 1;
 }
 EOF
-
-# Embed the .ico as the default application icon (resource ID 1)
-echo '1 ICON "dist/bin/gtkhash.ico"' > launcher.rc
-
+echo 'id ICON "dist/bin/gtkhash.ico"' > launcher.rc
 windres launcher.rc -O coff -o launcher.res
 gcc -mwindows launcher.c launcher.res -o "$DEST/GtkHash.exe"
-
-# Clean up build artifacts
 rm launcher.c launcher.rc launcher.res
