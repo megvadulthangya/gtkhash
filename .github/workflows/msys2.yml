@@ -1,4 +1,4 @@
-name: msys2
+name: msys2-modern
 
 on:
   push:
@@ -13,12 +13,7 @@ jobs:
       matrix:
         sys:
           - mingw64
-# mingw-w64-i686-styrene is gone:
-#          - mingw32
-# Not supported by styrene:
-#          - ucrt64
-#          - clang64
-#          - clang32
+          - ucrt64
     name: ${{ matrix.sys }}
     defaults:
       run:
@@ -38,30 +33,49 @@ jobs:
             git
             base-devel
             tree
+            zip
           pacboy: >-
             toolchain:p
-            styrene:p
+            gtk3:p
+            adwaita-icon-theme:p
+            libgcrypt:p
+            meson:p
+            imagemagick:p
 
-      - run: env
-
-      - name: Run makepkg-mingw
+      - name: Run makepkg-mingw (Build & Test & Install)
         run: |
           git archive --prefix gtkhash/ -o msys2/mingw-w64-gtkhash/gtkhash.tar.gz HEAD
           cd msys2/mingw-w64-gtkhash
           PKGEXT=.pkg.tar.xz makepkg-mingw --noconfirm --noprogressbar --syncdeps --clean --cleanbuild --force
-          tree
+          pacman -U --noconfirm *.pkg.tar.xz
 
-      - name: Run styrene
+      - name: Run Modern Bundle Script
+        working-directory: ./msys2
         run: |
-          sed -i 's/SafeConfigParser/ConfigParser/' "$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/styrene/cmdline.py"
-          cd msys2/styrene
-          python3 -m styrene --pkg-dir=$(readlink -f ../mingw-w64-gtkhash) styrene.cfg
-          tree
+          chmod +x bundle.sh
+          ./bundle.sh
+
+      - name: Create ZIP Archive
+        working-directory: ./msys2/dist
+        run: |
+          zip -r ../../gtkhash-${{ matrix.sys }}-portable.zip ./*
+
+      - name: Build Inno Setup Installer (.exe)
+        working-directory: msys2
+        shell: cmd
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" gtkhash.iss
+
+      - name: Move Installer for Upload
+        working-directory: msys2
+        shell: bash
+        run: |
+          mv gtkhash-installer.exe ../gtkhash-${{ matrix.sys }}-installer.exe
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.sys }}
+          name: gtkhash-${{ matrix.sys }}-packages
           if-no-files-found: error
           path: |
-            msys2/styrene/*-installer.exe
-            msys2/styrene/*-standalone.zip
+            gtkhash-${{ matrix.sys }}-portable.zip
+            gtkhash-${{ matrix.sys }}-installer.exe
