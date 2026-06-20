@@ -104,7 +104,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
-            meson \
+            python3-pip \
             ninja-build \
             gettext \
             appstream \
@@ -126,6 +126,10 @@ jobs:
             libnemo-extension-dev \
             libcaja-extension-dev \
             libthunarx-3-dev
+
+          python3 -m pip install --user --upgrade pip
+          python3 -m pip install --user "meson==1.5.1"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Meson setup
         run: |
