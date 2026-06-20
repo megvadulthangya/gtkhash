@@ -51,6 +51,15 @@ permissions:
 
 jobs:
 
+  # ==========================================================================
+  # SOURCE DISTRIBUTION (Linux / Ubuntu 22.04)
+  # ==========================================================================
+  # Replicates the `dist` job from compatibility-validation.yml.
+  # Produces:
+  #   - gtkhash-<version>.tar.gz
+  #   - gtkhash-<version>.tar.xz
+  #   - Corresponding .sha256 checksum files
+  # ==========================================================================
   source-dist:
     name: Source distribution
     runs-on: ubuntu-22.04
@@ -76,14 +85,17 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Patch meson.build to set the correct project version.
-      # Uses a Perl one-liner that only changes `version :` lines that are
-      # NOT preceded by `meson_` (i.e. the project version, not the required
-      # Meson version).
+      # Only modifies the version inside the `project(` line to avoid
+      # accidentally changing dependency version requirements.
       # -----------------------------------------------------------------------
       - name: Set project version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          perl -pi -e "s/(?<!meson_)version\s*:\s*'\K[^']*/$ENV{VERSION}/" meson.build
+          # This sed expression limits the replacement to the first occurrence
+          # of "version : '...'" on a line that starts with "project(".
+          sed -i "/^project(/ s/version\s*:\s*'[^']*'/version : '$VERSION'/" meson.build
+          # Show the relevant line for debugging
+          grep -E "^project\(" meson.build
 
       - name: Install build dependencies
         run: |
@@ -138,6 +150,7 @@ jobs:
           for f in *.tar.gz *.tar.xz; do
             sha256sum "$f" > "${f}.sha256"
           done
+          # Remove any automatically generated .sha256sum files (e.g. from meson dist)
           rm -f *.sha256sum
 
       - name: Upload source artifacts
@@ -147,6 +160,13 @@ jobs:
           path: build/meson-dist/*
           retention-days: 30
 
+  # ==========================================================================
+  # WINDOWS BUILDS (ucrt64 and mingw64)
+  # ==========================================================================
+  # Replicates the Windows build from msys2.yml, producing:
+  #   - gtkhash-<sys>-portable.zip
+  #   - gtkhash-<sys>-installer.exe
+  # ==========================================================================
   windows-build:
     name: Windows ${{ matrix.sys }}
     runs-on: windows-latest
@@ -224,6 +244,13 @@ jobs:
             gtkhash-${{ matrix.sys }}-installer.exe
           retention-days: 30
 
+  # ==========================================================================
+  # CREATE GITHUB RELEASE
+  # ==========================================================================
+  # Collects all artifacts, generates release notes, creates a release
+  # (draft for tag pushes, published for manual runs), and optionally
+  # updates the Flathub manifest.
+  # ==========================================================================
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
@@ -248,7 +275,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
@@ -257,8 +284,10 @@ jobs:
           mkdir -p release-assets
           VERSION="${{ steps.meta.outputs.version }}"
 
+          # Source tarballs and their .sha256 files
           cp artifacts/source-dist/*.tar.gz artifacts/source-dist/*.tar.xz artifacts/source-dist/*.sha256 release-assets/
 
+          # Windows artifacts: rename to include version
           for sys in mingw64 ucrt64; do
             if [ -d "artifacts/windows-$sys" ]; then
               for file in artifacts/windows-$sys/*; do
@@ -298,13 +327,13 @@ jobs:
           echo "notes_file=release-notes.md" >> $GITHUB_OUTPUT
           cat release-notes.md
 
-      - name: Create release
+      - name: Create release (draft for push, publish for manual)
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.meta.outputs.tag }}
         run: |
-          # Full commit SHA is required as --target value
+          # Use full commit SHA as --target for a valid Git reference
           TARGET_SHA=$(git rev-parse HEAD)
 
           if [ "${{ github.event_name }}" = "push" ]; then
@@ -320,6 +349,9 @@ jobs:
             --notes-file "release-notes.md" \
             release-assets/*
 
+      # -----------------------------------------------------------------------
+      # Optional: Update the Flathub manifest
+      # -----------------------------------------------------------------------
       - name: Flathub manifest update (optional)
         if: env.FLATHUB_TOKEN != ''
         env:
@@ -348,6 +380,7 @@ jobs:
           git add org.gtkhash.gtkhash.yaml
           git commit -m "chore: update to ${TAG}"
           git push
+        shell: bash
 
       - name: Warn if Flathub token missing
         if: env.FLATHUB_TOKEN == ''
