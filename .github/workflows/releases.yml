@@ -38,8 +38,8 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'                # Only run on version tags (e.g. v1.5.1)
-  workflow_dispatch:        # Manual trigger for testing or ad-hoc releases
+      - 'v*'
+  workflow_dispatch:
     inputs:
       tag:
         description: 'Tag to release (e.g. v1.5.1)'
@@ -47,19 +47,10 @@ on:
         type: string
 
 permissions:
-  contents: write           # Required for creating releases and tags
+  contents: write
 
 jobs:
 
-  # ==========================================================================
-  # SOURCE DISTRIBUTION (Linux / Ubuntu 22.04)
-  # ==========================================================================
-  # Replicates the `dist` job from compatibility-validation.yml.
-  # Produces:
-  #   - gtkhash-<version>.tar.gz
-  #   - gtkhash-<version>.tar.xz
-  #   - Corresponding .sha256 checksum files
-  # ==========================================================================
   source-dist:
     name: Source distribution
     runs-on: ubuntu-22.04
@@ -79,21 +70,20 @@ jobs:
           else
             TAG="${{ github.event.inputs.tag }}"
           fi
-          # Strip a leading 'v' if present (e.g. v1.5.1 -> 1.5.1)
           VERSION="${TAG#v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-        shell: bash
 
       # -----------------------------------------------------------------------
-      # Patch meson.build to use the real version from the tag.
-      # IMPORTANT: We only replace the FIRST occurrence of "version : '...'"
-      # which belongs to the project() declaration, NOT the meson_version.
+      # Patch meson.build to set the correct project version.
+      # Uses a Perl one-liner that only changes `version :` lines that are
+      # NOT preceded by `meson_` (i.e. the project version, not the required
+      # Meson version).
       # -----------------------------------------------------------------------
       - name: Set project version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          sed -i "0,/version\s*:\s*'[^']*'/ s/version\s*:\s*'[^']*'/version : '$VERSION'/" meson.build
+          perl -pi -e "s/(?<!meson_)version\s*:\s*'\K[^']*/$ENV{VERSION}/" meson.build
 
       - name: Install build dependencies
         run: |
@@ -148,23 +138,15 @@ jobs:
           for f in *.tar.gz *.tar.xz; do
             sha256sum "$f" > "${f}.sha256"
           done
-          # Remove any automatically generated .sha256sum files (e.g. from meson dist)
           rm -f *.sha256sum
 
       - name: Upload source artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: source-dist
           path: build/meson-dist/*
           retention-days: 30
 
-  # ==========================================================================
-  # WINDOWS BUILDS (ucrt64 and mingw64)
-  # ==========================================================================
-  # Replicates the Windows build from msys2.yml, producing:
-  #   - gtkhash-<sys>-portable.zip
-  #   - gtkhash-<sys>-installer.exe
-  # ==========================================================================
   windows-build:
     name: Windows ${{ matrix.sys }}
     runs-on: windows-latest
@@ -234,7 +216,7 @@ jobs:
           mv gtkhash-installer.exe ../gtkhash-${{ matrix.sys }}-installer.exe
 
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: windows-${{ matrix.sys }}
           path: |
@@ -242,13 +224,6 @@ jobs:
             gtkhash-${{ matrix.sys }}-installer.exe
           retention-days: 30
 
-  # ==========================================================================
-  # CREATE GITHUB RELEASE
-  # ==========================================================================
-  # Collects all artifacts, generates release notes, creates a release
-  # (draft for tag pushes, published for manual runs), and optionally
-  # updates the Flathub manifest.
-  # ==========================================================================
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
@@ -273,7 +248,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
@@ -282,10 +257,8 @@ jobs:
           mkdir -p release-assets
           VERSION="${{ steps.meta.outputs.version }}"
 
-          # Source tarballs and their .sha256 files
           cp artifacts/source-dist/*.tar.gz artifacts/source-dist/*.tar.xz artifacts/source-dist/*.sha256 release-assets/
 
-          # Windows artifacts: rename to include version
           for sys in mingw64 ucrt64; do
             if [ -d "artifacts/windows-$sys" ]; then
               for file in artifacts/windows-$sys/*; do
@@ -296,7 +269,6 @@ jobs:
             fi
           done
 
-          echo "Assets prepared:"
           ls -la release-assets
 
       - name: Generate release notes
@@ -312,7 +284,6 @@ jobs:
             echo "_(No NEWS file found.)_" >> release-notes.md
           fi
 
-          # Append commit log since previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
           echo "" >> release-notes.md
           if [ -n "$PREV_TAG" ]; then
@@ -327,30 +298,28 @@ jobs:
           echo "notes_file=release-notes.md" >> $GITHUB_OUTPUT
           cat release-notes.md
 
-      - name: Create release (draft for push, publish for manual)
+      - name: Create release
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.meta.outputs.tag }}
         run: |
-          # Decide whether to create a draft
+          # Full commit SHA is required as --target value
+          TARGET_SHA=$(git rev-parse HEAD)
+
           if [ "${{ github.event_name }}" = "push" ]; then
             DRAFT="--draft"
           else
             DRAFT=""
           fi
 
-          # Create the release and tag (if it doesn't exist)
           gh release create "$TAG" \
             $DRAFT \
-            --target HEAD \
+            --target "$TARGET_SHA" \
             --title "$TAG" \
             --notes-file "release-notes.md" \
             release-assets/*
 
-      # -----------------------------------------------------------------------
-      # Optional: Update the Flathub manifest
-      # -----------------------------------------------------------------------
       - name: Flathub manifest update (optional)
         if: env.FLATHUB_TOKEN != ''
         env:
@@ -379,7 +348,6 @@ jobs:
           git add org.gtkhash.gtkhash.yaml
           git commit -m "chore: update to ${TAG}"
           git push
-        shell: bash
 
       - name: Warn if Flathub token missing
         if: env.FLATHUB_TOKEN == ''
