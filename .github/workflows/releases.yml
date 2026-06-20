@@ -85,17 +85,15 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Patch meson.build to set the correct project version.
-      # Only modifies the version inside the `project(` declaration, even if
-      # the line has leading whitespace or spans multiple lines.
+      # Uses a robust sed that replaces the first value inside single quotes
+      # on the line that contains "version : '". This works regardless of
+      # surrounding whitespace or the structure of the project() block.
       # -----------------------------------------------------------------------
       - name: Set project version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # This sed range matches from the first line that begins with optional
-          # whitespace followed by "project(" up to the closing parenthesis.
-          # Inside that range, it replaces the first `version : '...'` value.
-          sed -i "/^\s*project(/,/)/ s/version\s*:\s*'[^']*'/version : '$VERSION'/" meson.build
-          # Print the modified project block for verification
+          sed -i "/version\s*:\s*'/ s/'[^']*'/'$VERSION'/" meson.build
+          # Print the modified project block for debugging
           sed -n "/^\s*project(/,/)/ p" meson.build
 
       - name: Install build dependencies
@@ -155,7 +153,7 @@ jobs:
           for f in *.tar.gz *.tar.xz; do
             sha256sum "$f" > "${f}.sha256"
           done
-          # Remove any automatically generated .sha256sum files (e.g. from meson dist)
+          # Remove any automatically generated .sha256sum files
           rm -f *.sha256sum
 
       - name: Upload source artifacts
@@ -192,6 +190,36 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
+      # -----------------------------------------------------------------------
+      # Retrieve the version from the source-dist job's output.
+      # The source-dist job is a dependency of create-release, but not of
+      # windows-build. We need the version here to patch meson.build before
+      # the Windows build. We compute it independently from the tag/input.
+      # -----------------------------------------------------------------------
+      - name: Determine version for Windows build
+        id: win_version
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="${{ github.event.inputs.tag }}"
+          fi
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+        shell: bash
+
+      # -----------------------------------------------------------------------
+      # Patch meson.build so the embedded version matches the release tag.
+      # This must happen before git archive or any build step.
+      # -----------------------------------------------------------------------
+      - name: Set project version (Windows)
+        shell: bash
+        run: |
+          VERSION="${{ steps.win_version.outputs.version }}"
+          sed -i "/version\s*:\s*'/ s/'[^']*'/'$VERSION'/" meson.build
+          # Print the project line(s) for verification
+          grep -E "project\(|version\s*:" meson.build
 
       - uses: msys2/setup-msys2@v2
         with:
