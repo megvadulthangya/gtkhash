@@ -85,13 +85,14 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Patch meson.build to set the correct project version.
-      # The sed command restricts the change to the project() block so that
-      # the project name and dependency version requirements stay untouched.
+      # The sed command restricts the change to the project() block and
+      # explicitly skips lines containing "meson_version" so that the
+      # required Meson version is never altered.
       # -----------------------------------------------------------------------
       - name: Set project version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          sed -i "/^\s*project(/,/)/ s/version\s*:\s*'[^']*'/version : '$VERSION'/" meson.build
+          sed -i "/^\s*project(/,/)/ { /meson_version/! s/version\s*:\s*'[^']*'/version : '$VERSION'/ }" meson.build
           # Print the project() block for debugging
           sed -n "/^\s*project(/,/)/ p" meson.build
 
@@ -101,7 +102,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
-            python3-pip \
+            meson \
             ninja-build \
             gettext \
             appstream \
@@ -123,10 +124,6 @@ jobs:
             libnemo-extension-dev \
             libcaja-extension-dev \
             libthunarx-3-dev
-
-          python3 -m pip install --user --upgrade pip
-          python3 -m pip install --user "meson==1.5.1"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Meson setup
         run: |
@@ -208,13 +205,14 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Patch meson.build so the embedded version matches the release tag.
-      # Only the version inside the project() block is changed.
+      # Only the version inside the project() block is changed, and the
+      # meson_version line is explicitly preserved.
       # -----------------------------------------------------------------------
       - name: Set project version (Windows)
         shell: bash
         run: |
           VERSION="${{ steps.win_version.outputs.version }}"
-          sed -i "/^\s*project(/,/)/ s/version\s*:\s*'[^']*'/version : '$VERSION'/" meson.build
+          sed -i "/^\s*project(/,/)/ { /meson_version/! s/version\s*:\s*'[^']*'/version : '$VERSION'/ }" meson.build
           # Print the project() block for verification
           sed -n "/^\s*project(/,/)/ p" meson.build
 
