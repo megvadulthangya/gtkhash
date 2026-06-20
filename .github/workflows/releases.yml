@@ -17,8 +17,11 @@
 #     Instead it repeats the necessary build steps here. This guarantees
 #     that the exact commit tagged is built and released, regardless of the
 #     state of other workflow runs.
-#   - The GitHub Release is created as a **draft** so the maintainer can
-#     review/edit the release notes before publishing.
+#   - When a real tag is pushed (`push` event) the release is created as a
+#     **draft** so the maintainer can review/edit the release notes before
+#     publishing.  When the workflow is triggered manually (`workflow_dispatch`)
+#     the release is **published immediately**, because the user is actively
+#     creating a release.
 #   - Release notes are a hybrid: the full content of the `NEWS` file plus
 #     a commit log since the previous tag.
 #   - A Flathub manifest update step is optionally run if the secret
@@ -43,9 +46,8 @@ on:
         required: true
         type: string
 
-# Necessary permissions for creating a release and uploading assets.
 permissions:
-  contents: write
+  contents: write           # Required for creating releases and tags
 
 jobs:
 
@@ -67,12 +69,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0           # Full history needed for git describe / release notes later
+          fetch-depth: 0
 
-      # -----------------------------------------------------------------------
-      # Determine the release version from the tag name.
-      # Both push and workflow_dispatch events are handled.
-      # -----------------------------------------------------------------------
       - name: Determine release version
         id: version
         run: |
@@ -88,8 +86,15 @@ jobs:
         shell: bash
 
       # -----------------------------------------------------------------------
-      # Install build dependencies (identical to dist job in compatibility-validation.yml)
+      # Patch meson.build to use the real version from the tag
       # -----------------------------------------------------------------------
+      - name: Set project version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # Replace the version string in the project() declaration
+          # (assumes the line looks like:  version : 'x.y')
+          sed -i "s/version\s*:\s*'[^']*'/version : '$VERSION'/" meson.build
+
       - name: Install build dependencies
         run: |
           export DEBIAN_FRONTEND=noninteractive
@@ -119,9 +124,6 @@ jobs:
             libcaja-extension-dev \
             libthunarx-3-dev
 
-      # -----------------------------------------------------------------------
-      # Configure with Meson (same options as the dist job)
-      # -----------------------------------------------------------------------
       - name: Meson setup
         run: |
           meson setup build \
@@ -136,32 +138,25 @@ jobs:
             -Dbuild-caja=true \
             -Dbuild-thunar=true
 
-      # -----------------------------------------------------------------------
-      # Create the distribution tarballs (gzip and xz)
-      # -----------------------------------------------------------------------
       - name: Create distribution tarballs
         run: |
           meson dist -C build --formats gztar,xztar --no-tests
 
-      # -----------------------------------------------------------------------
-      # Generate SHA256 checksums for each tarball
-      # -----------------------------------------------------------------------
       - name: Generate SHA256 checksums
         run: |
           cd build/meson-dist
           for f in *.tar.gz *.tar.xz; do
             sha256sum "$f" > "${f}.sha256"
           done
+          # Remove any automatically generated .sha256sum files (e.g. from meson dist)
+          rm -f *.sha256sum
 
-      # -----------------------------------------------------------------------
-      # Upload the artifacts so the release job can attach them later
-      # -----------------------------------------------------------------------
       - name: Upload source artifacts
         uses: actions/upload-artifact@v7
         with:
           name: source-dist
           path: build/meson-dist/*
-          retention-days: 30   # Keep long enough for the release to complete
+          retention-days: 30
 
   # ==========================================================================
   # WINDOWS BUILDS (ucrt64 and mingw64)
@@ -181,9 +176,8 @@ jobs:
           - ucrt64
     defaults:
       run:
-        shell: msys2 {0}        # All steps use MSYS2 bash unless overridden
+        shell: msys2 {0}
     steps:
-      # Prevent CRLF mangling before checkout
       - run: git config --global core.autocrlf input
         shell: bash
 
@@ -192,9 +186,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # -----------------------------------------------------------------------
-      # Set up MSYS2 environment with required packages
-      # -----------------------------------------------------------------------
       - uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.sys }}
@@ -212,9 +203,6 @@ jobs:
             meson:p
             imagemagick:p
 
-      # -----------------------------------------------------------------------
-      # Build, test and install the package using makepkg-mingw
-      # -----------------------------------------------------------------------
       - name: Run makepkg-mingw (Build & Test & Install)
         run: |
           git archive --prefix gtkhash/ -o msys2/mingw-w64-gtkhash/gtkhash.tar.gz HEAD
@@ -222,26 +210,17 @@ jobs:
           PKGEXT=.pkg.tar.xz makepkg-mingw --noconfirm --noprogressbar --syncdeps --clean --cleanbuild --force
           pacman -U --noconfirm *.pkg.tar.xz
 
-      # -----------------------------------------------------------------------
-      # Bundle the application with all required DLLs and assets
-      # -----------------------------------------------------------------------
       - name: Run Modern Bundle Script
         working-directory: ./msys2
         run: |
           chmod +x bundle.sh
           ./bundle.sh
 
-      # -----------------------------------------------------------------------
-      # Create the portable ZIP archive
-      # -----------------------------------------------------------------------
       - name: Create ZIP Archive
         working-directory: ./msys2/dist
         run: |
           zip -r ../../gtkhash-${{ matrix.sys }}-portable.zip ./*
 
-      # -----------------------------------------------------------------------
-      # Build the Inno Setup installer (.exe)
-      # -----------------------------------------------------------------------
       - name: Build Inno Setup Installer (.exe)
         working-directory: msys2
         shell: cmd
@@ -254,9 +233,6 @@ jobs:
         run: |
           mv gtkhash-installer.exe ../gtkhash-${{ matrix.sys }}-installer.exe
 
-      # -----------------------------------------------------------------------
-      # Upload the Windows artifacts
-      # -----------------------------------------------------------------------
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -269,23 +245,21 @@ jobs:
   # ==========================================================================
   # CREATE GITHUB RELEASE
   # ==========================================================================
-  # Collects all artifacts, generates release notes, creates a draft release
-  # using the GitHub CLI, and optionally updates the Flathub manifest.
+  # Collects all artifacts, generates release notes, creates a release
+  # (draft for tag pushes, published for manual runs), and optionally
+  # updates the Flathub manifest.
   # ==========================================================================
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs: [source-dist, windows-build]
-    if: success()                       # Only proceed if both build jobs succeeded
+    if: success()
     steps:
       - name: Checkout code (for release notes)
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0                 # Need all tags for release note generation
+          fetch-depth: 0
 
-      # -----------------------------------------------------------------------
-      # Determine version and tag (repeated in case of workflow_dispatch)
-      # -----------------------------------------------------------------------
       - name: Determine release version and tag
         id: meta
         run: |
@@ -298,27 +272,20 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      # -----------------------------------------------------------------------
-      # Download all build artifacts
-      # -----------------------------------------------------------------------
       - name: Download all artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v7
         with:
-          path: artifacts                # Creates subdirectories: source-dist, windows-mingw64, windows-ucrt64
+          path: artifacts
 
-      # -----------------------------------------------------------------------
-      # Prepare a clean folder with final, versioned asset filenames
-      # -----------------------------------------------------------------------
       - name: Prepare release assets directory
         run: |
           mkdir -p release-assets
           VERSION="${{ steps.meta.outputs.version }}"
 
-          # Source tarballs already include the version (e.g. gtkhash-1.5.1.tar.gz)
-          cp artifacts/source-dist/* release-assets/
+          # Source tarballs and their .sha256 files
+          cp artifacts/source-dist/*.tar.gz artifacts/source-dist/*.tar.xz artifacts/source-dist/*.sha256 release-assets/
 
-          # Rename Windows artifacts to include the version number
-          # Original: gtkhash-ucrt64-portable.zip -> gtkhash-1.5.1-ucrt64-portable.zip
+          # Windows artifacts: rename to include version
           for sys in mingw64 ucrt64; do
             if [ -d "artifacts/windows-$sys" ]; then
               for file in artifacts/windows-$sys/*; do
@@ -332,66 +299,57 @@ jobs:
           echo "Assets prepared:"
           ls -la release-assets
 
-      # -----------------------------------------------------------------------
-      # Generate hybrid release notes: NEWS file content + commit log
-      # -----------------------------------------------------------------------
       - name: Generate release notes
         id: notes
         run: |
           TAG="${{ steps.meta.outputs.tag }}"
 
-          # Start with the NEWS file (if it exists)
+          echo "## Changes in this release" > release-notes.md
+          echo "" >> release-notes.md
           if [ -f NEWS ]; then
-            echo "## Changes in this release" > release-notes.md
-            echo "" >> release-notes.md
             cat NEWS >> release-notes.md
           else
-            echo "## Changes in this release" > release-notes.md
-            echo "" >> release-notes.md
             echo "_(No NEWS file found.)_" >> release-notes.md
           fi
 
-          # Append the commit log since the previous tag (or all commits if first release)
+          # Append commit log since previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          echo "" >> release-notes.md
           if [ -n "$PREV_TAG" ]; then
-            echo "" >> release-notes.md
             echo "## Commits since $PREV_TAG" >> release-notes.md
-            echo '```' >> release-notes.md
-            git log --oneline ${PREV_TAG}..HEAD >> release-notes.md
-            echo '```' >> release-notes.md
           else
-            echo "" >> release-notes.md
             echo "## All commits" >> release-notes.md
-            echo '```' >> release-notes.md
-            git log --oneline >> release-notes.md
-            echo '```' >> release-notes.md
           fi
+          echo '```' >> release-notes.md
+          git log --oneline ${PREV_TAG:+"${PREV_TAG}..HEAD"} >> release-notes.md
+          echo '```' >> release-notes.md
 
-          # Store the file path for the next step
           echo "notes_file=release-notes.md" >> $GITHUB_OUTPUT
           cat release-notes.md
 
-      # -----------------------------------------------------------------------
-      # Create a draft GitHub Release and upload all assets
-      # -----------------------------------------------------------------------
-      - name: Create draft release
+      - name: Create release (draft for push, publish for manual)
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.meta.outputs.tag }}
         run: |
+          # Decide whether to create a draft
+          if [ "${{ github.event_name }}" = "push" ]; then
+            DRAFT="--draft"
+          else
+            DRAFT=""
+          fi
+
+          # Create the release and tag (if it doesn't exist)
           gh release create "$TAG" \
-            --draft \
+            $DRAFT \
+            --target HEAD \
             --title "$TAG" \
-            --notes-file "${{ steps.notes.outputs.notes_file }}" \
+            --notes-file "release-notes.md" \
             release-assets/*
 
       # -----------------------------------------------------------------------
       # Optional: Update the Flathub manifest
-      # -----------------------------------------------------------------------
-      # If the secret FLATHUB_TOKEN is set, this step clones the Flathub repo,
-      # updates the tarball URL and SHA256, commits and pushes.
-      # If the token is missing, the step is skipped and a warning is printed.
       # -----------------------------------------------------------------------
       - name: Flathub manifest update (optional)
         if: env.FLATHUB_TOKEN != ''
@@ -400,12 +358,9 @@ jobs:
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
           TAG="${{ steps.meta.outputs.tag }}"
-          REPO="${{ github.repository }}"       # e.g. tristanheaven/gtkhash
-
-          # Construct the download URL for the .tar.xz asset
+          REPO="${{ github.repository }}"
           TARBALL_URL="https://github.com/${REPO}/releases/download/${TAG}/gtkhash-${VERSION}.tar.xz"
 
-          # Read the SHA256 checksum we generated earlier
           SHA256_FILE="release-assets/gtkhash-${VERSION}.tar.xz.sha256"
           if [ ! -f "$SHA256_FILE" ]; then
             echo "::error::SHA256 file not found, cannot update Flathub."
@@ -413,15 +368,12 @@ jobs:
           fi
           SHA256=$(awk '{print $1}' "$SHA256_FILE")
 
-          # Clone the Flathub repository using the provided token
           git clone "https://x-access-token:${FLATHUB_TOKEN}@github.com/flathub/org.gtkhash.gtkhash.git" flathub-repo
           cd flathub-repo
 
-          # Update the manifest (assumes the YAML file is named org.gtkhash.gtkhash.yaml)
           sed -i "s|url: .*|url: $TARBALL_URL|" org.gtkhash.gtkhash.yaml
           sed -i "s|sha256: .*|sha256: $SHA256|" org.gtkhash.gtkhash.yaml
 
-          # Commit and push
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add org.gtkhash.gtkhash.yaml
@@ -429,10 +381,7 @@ jobs:
           git push
         shell: bash
 
-      # -----------------------------------------------------------------------
-      # Warn if the Flathub token is missing
-      # -----------------------------------------------------------------------
-      - name: Notify if Flathub token missing
+      - name: Warn if Flathub token missing
         if: env.FLATHUB_TOKEN == ''
         run: echo "::warning::FLATHUB_TOKEN secret not set, skipping Flathub manifest update."
         env:
