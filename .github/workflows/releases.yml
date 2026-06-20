@@ -85,17 +85,18 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Patch meson.build to set the correct project version.
-      # Only modifies the version inside the `project(` line to avoid
-      # accidentally changing dependency version requirements.
+      # Only modifies the version inside the `project(` declaration, even if
+      # the line has leading whitespace or spans multiple lines.
       # -----------------------------------------------------------------------
       - name: Set project version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # This sed expression limits the replacement to the first occurrence
-          # of "version : '...'" on a line that starts with "project(".
-          sed -i "/^project(/ s/version\s*:\s*'[^']*'/version : '$VERSION'/" meson.build
-          # Show the relevant line for debugging
-          grep -E "^project\(" meson.build
+          # This sed range matches from the first line that begins with optional
+          # whitespace followed by "project(" up to the closing parenthesis.
+          # Inside that range, it replaces the first `version : '...'` value.
+          sed -i "/^\s*project(/,/)/ s/version\s*:\s*'[^']*'/version : '$VERSION'/" meson.build
+          # Print the modified project block for verification
+          sed -n "/^\s*project(/,/)/ p" meson.build
 
       - name: Install build dependencies
         run: |
@@ -154,7 +155,7 @@ jobs:
           rm -f *.sha256sum
 
       - name: Upload source artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: source-dist
           path: build/meson-dist/*
@@ -236,7 +237,7 @@ jobs:
           mv gtkhash-installer.exe ../gtkhash-${{ matrix.sys }}-installer.exe
 
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-${{ matrix.sys }}
           path: |
