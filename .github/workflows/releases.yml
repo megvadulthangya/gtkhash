@@ -1,0 +1,439 @@
+# ==============================================================================
+# Release Workflow for GtkHash
+# ==============================================================================
+#
+# This workflow automates the creation of a GitHub Release for GtkHash.
+# It is triggered either by pushing a new version tag (v*) or manually via
+# workflow_dispatch (useful for testing and one-off releases).
+#
+# Key design decisions (respecting the maintainer's preferences):
+#   - No third-party actions are used for the release logic itself.
+#     * GitHub CLI (`gh`) handles release creation and asset upload.
+#     * The only "external" action is `msys2/setup-msys2@v2` which is the
+#       de-facto standard for MSYS2 environments and cannot be avoided for
+#       building Windows binaries.
+#   - The workflow is **self-contained** – it does NOT depend on artifacts
+#     from other workflows (compatibility-validation.yml, msys2.yml).
+#     Instead it repeats the necessary build steps here. This guarantees
+#     that the exact commit tagged is built and released, regardless of the
+#     state of other workflow runs.
+#   - The GitHub Release is created as a **draft** so the maintainer can
+#     review/edit the release notes before publishing.
+#   - Release notes are a hybrid: the full content of the `NEWS` file plus
+#     a commit log since the previous tag.
+#   - A Flathub manifest update step is optionally run if the secret
+#     `FLATHUB_TOKEN` is available; otherwise it emits a warning.
+#
+# Required secrets/permissions:
+#   - GITHUB_TOKEN with `contents: write` (set in repo Settings > Actions > General).
+#   - (Optional) FLATHUB_TOKEN – a GitHub PAT with push access to
+#     `flathub/org.gtkhash.gtkhash`.
+# ==============================================================================
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'                # Only run on version tags (e.g. v1.5.1)
+  workflow_dispatch:        # Manual trigger for testing or ad-hoc releases
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v1.5.1)'
+        required: true
+        type: string
+
+# Necessary permissions for creating a release and uploading assets.
+permissions:
+  contents: write
+
+jobs:
+
+  # ==========================================================================
+  # SOURCE DISTRIBUTION (Linux / Ubuntu 22.04)
+  # ==========================================================================
+  # Replicates the `dist` job from compatibility-validation.yml.
+  # Produces:
+  #   - gtkhash-<version>.tar.gz
+  #   - gtkhash-<version>.tar.xz
+  #   - Corresponding .sha256 checksum files
+  # ==========================================================================
+  source-dist:
+    name: Source distribution
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0           # Full history needed for git describe / release notes later
+
+      # -----------------------------------------------------------------------
+      # Determine the release version from the tag name.
+      # Both push and workflow_dispatch events are handled.
+      # -----------------------------------------------------------------------
+      - name: Determine release version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="${{ github.event.inputs.tag }}"
+          fi
+          # Strip a leading 'v' if present (e.g. v1.5.1 -> 1.5.1)
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+        shell: bash
+
+      # -----------------------------------------------------------------------
+      # Install build dependencies (identical to dist job in compatibility-validation.yml)
+      # -----------------------------------------------------------------------
+      - name: Install build dependencies
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            meson \
+            ninja-build \
+            gettext \
+            appstream \
+            pkg-config \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            libgcrypt20-dev \
+            nettle-dev \
+            libb2-dev \
+            libmbedtls-dev \
+            libssl-dev \
+            linux-libc-dev \
+            librsvg2-bin \
+            libxml2-utils \
+            at-spi2-core \
+            xvfb \
+            gnome-icon-theme \
+            libnautilus-extension-dev \
+            libnemo-extension-dev \
+            libcaja-extension-dev \
+            libthunarx-3-dev
+
+      # -----------------------------------------------------------------------
+      # Configure with Meson (same options as the dist job)
+      # -----------------------------------------------------------------------
+      - name: Meson setup
+        run: |
+          meson setup build \
+            --buildtype=debug \
+            -Dglib-checksums=true \
+            -Dlinux-crypto=true \
+            -Dnettle=true \
+            -Dmbedtls=true \
+            -Dlibcrypto=true \
+            -Dbuild-nautilus=true \
+            -Dbuild-nemo=true \
+            -Dbuild-caja=true \
+            -Dbuild-thunar=true
+
+      # -----------------------------------------------------------------------
+      # Create the distribution tarballs (gzip and xz)
+      # -----------------------------------------------------------------------
+      - name: Create distribution tarballs
+        run: |
+          meson dist -C build --formats gztar,xztar --no-tests
+
+      # -----------------------------------------------------------------------
+      # Generate SHA256 checksums for each tarball
+      # -----------------------------------------------------------------------
+      - name: Generate SHA256 checksums
+        run: |
+          cd build/meson-dist
+          for f in *.tar.gz *.tar.xz; do
+            sha256sum "$f" > "${f}.sha256"
+          done
+
+      # -----------------------------------------------------------------------
+      # Upload the artifacts so the release job can attach them later
+      # -----------------------------------------------------------------------
+      - name: Upload source artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: source-dist
+          path: build/meson-dist/*
+          retention-days: 30   # Keep long enough for the release to complete
+
+  # ==========================================================================
+  # WINDOWS BUILDS (ucrt64 and mingw64)
+  # ==========================================================================
+  # Replicates the Windows build from msys2.yml, producing:
+  #   - gtkhash-<sys>-portable.zip
+  #   - gtkhash-<sys>-installer.exe
+  # ==========================================================================
+  windows-build:
+    name: Windows ${{ matrix.sys }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sys:
+          - mingw64
+          - ucrt64
+    defaults:
+      run:
+        shell: msys2 {0}        # All steps use MSYS2 bash unless overridden
+    steps:
+      # Prevent CRLF mangling before checkout
+      - run: git config --global core.autocrlf input
+        shell: bash
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # -----------------------------------------------------------------------
+      # Set up MSYS2 environment with required packages
+      # -----------------------------------------------------------------------
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.sys }}
+          update: true
+          install: >-
+            git
+            base-devel
+            tree
+            zip
+          pacboy: >-
+            toolchain:p
+            gtk3:p
+            adwaita-icon-theme:p
+            libgcrypt:p
+            meson:p
+            imagemagick:p
+
+      # -----------------------------------------------------------------------
+      # Build, test and install the package using makepkg-mingw
+      # -----------------------------------------------------------------------
+      - name: Run makepkg-mingw (Build & Test & Install)
+        run: |
+          git archive --prefix gtkhash/ -o msys2/mingw-w64-gtkhash/gtkhash.tar.gz HEAD
+          cd msys2/mingw-w64-gtkhash
+          PKGEXT=.pkg.tar.xz makepkg-mingw --noconfirm --noprogressbar --syncdeps --clean --cleanbuild --force
+          pacman -U --noconfirm *.pkg.tar.xz
+
+      # -----------------------------------------------------------------------
+      # Bundle the application with all required DLLs and assets
+      # -----------------------------------------------------------------------
+      - name: Run Modern Bundle Script
+        working-directory: ./msys2
+        run: |
+          chmod +x bundle.sh
+          ./bundle.sh
+
+      # -----------------------------------------------------------------------
+      # Create the portable ZIP archive
+      # -----------------------------------------------------------------------
+      - name: Create ZIP Archive
+        working-directory: ./msys2/dist
+        run: |
+          zip -r ../../gtkhash-${{ matrix.sys }}-portable.zip ./*
+
+      # -----------------------------------------------------------------------
+      # Build the Inno Setup installer (.exe)
+      # -----------------------------------------------------------------------
+      - name: Build Inno Setup Installer (.exe)
+        working-directory: msys2
+        shell: cmd
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" gtkhash.iss
+
+      - name: Move Installer to root
+        working-directory: msys2
+        shell: bash
+        run: |
+          mv gtkhash-installer.exe ../gtkhash-${{ matrix.sys }}-installer.exe
+
+      # -----------------------------------------------------------------------
+      # Upload the Windows artifacts
+      # -----------------------------------------------------------------------
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-${{ matrix.sys }}
+          path: |
+            gtkhash-${{ matrix.sys }}-portable.zip
+            gtkhash-${{ matrix.sys }}-installer.exe
+          retention-days: 30
+
+  # ==========================================================================
+  # CREATE GITHUB RELEASE
+  # ==========================================================================
+  # Collects all artifacts, generates release notes, creates a draft release
+  # using the GitHub CLI, and optionally updates the Flathub manifest.
+  # ==========================================================================
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [source-dist, windows-build]
+    if: success()                       # Only proceed if both build jobs succeeded
+    steps:
+      - name: Checkout code (for release notes)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0                 # Need all tags for release note generation
+
+      # -----------------------------------------------------------------------
+      # Determine version and tag (repeated in case of workflow_dispatch)
+      # -----------------------------------------------------------------------
+      - name: Determine release version and tag
+        id: meta
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="${{ github.event.inputs.tag }}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      # -----------------------------------------------------------------------
+      # Download all build artifacts
+      # -----------------------------------------------------------------------
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts                # Creates subdirectories: source-dist, windows-mingw64, windows-ucrt64
+
+      # -----------------------------------------------------------------------
+      # Prepare a clean folder with final, versioned asset filenames
+      # -----------------------------------------------------------------------
+      - name: Prepare release assets directory
+        run: |
+          mkdir -p release-assets
+          VERSION="${{ steps.meta.outputs.version }}"
+
+          # Source tarballs already include the version (e.g. gtkhash-1.5.1.tar.gz)
+          cp artifacts/source-dist/* release-assets/
+
+          # Rename Windows artifacts to include the version number
+          # Original: gtkhash-ucrt64-portable.zip -> gtkhash-1.5.1-ucrt64-portable.zip
+          for sys in mingw64 ucrt64; do
+            if [ -d "artifacts/windows-$sys" ]; then
+              for file in artifacts/windows-$sys/*; do
+                base=$(basename "$file")
+                newname=$(echo "$base" | sed "s/gtkhash-$sys/gtkhash-${VERSION}-$sys/")
+                cp "$file" "release-assets/$newname"
+              done
+            fi
+          done
+
+          echo "Assets prepared:"
+          ls -la release-assets
+
+      # -----------------------------------------------------------------------
+      # Generate hybrid release notes: NEWS file content + commit log
+      # -----------------------------------------------------------------------
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+
+          # Start with the NEWS file (if it exists)
+          if [ -f NEWS ]; then
+            echo "## Changes in this release" > release-notes.md
+            echo "" >> release-notes.md
+            cat NEWS >> release-notes.md
+          else
+            echo "## Changes in this release" > release-notes.md
+            echo "" >> release-notes.md
+            echo "_(No NEWS file found.)_" >> release-notes.md
+          fi
+
+          # Append the commit log since the previous tag (or all commits if first release)
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          if [ -n "$PREV_TAG" ]; then
+            echo "" >> release-notes.md
+            echo "## Commits since $PREV_TAG" >> release-notes.md
+            echo '```' >> release-notes.md
+            git log --oneline ${PREV_TAG}..HEAD >> release-notes.md
+            echo '```' >> release-notes.md
+          else
+            echo "" >> release-notes.md
+            echo "## All commits" >> release-notes.md
+            echo '```' >> release-notes.md
+            git log --oneline >> release-notes.md
+            echo '```' >> release-notes.md
+          fi
+
+          # Store the file path for the next step
+          echo "notes_file=release-notes.md" >> $GITHUB_OUTPUT
+          cat release-notes.md
+
+      # -----------------------------------------------------------------------
+      # Create a draft GitHub Release and upload all assets
+      # -----------------------------------------------------------------------
+      - name: Create draft release
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          gh release create "$TAG" \
+            --draft \
+            --title "$TAG" \
+            --notes-file "${{ steps.notes.outputs.notes_file }}" \
+            release-assets/*
+
+      # -----------------------------------------------------------------------
+      # Optional: Update the Flathub manifest
+      # -----------------------------------------------------------------------
+      # If the secret FLATHUB_TOKEN is set, this step clones the Flathub repo,
+      # updates the tarball URL and SHA256, commits and pushes.
+      # If the token is missing, the step is skipped and a warning is printed.
+      # -----------------------------------------------------------------------
+      - name: Flathub manifest update (optional)
+        if: env.FLATHUB_TOKEN != ''
+        env:
+          FLATHUB_TOKEN: ${{ secrets.FLATHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          TAG="${{ steps.meta.outputs.tag }}"
+          REPO="${{ github.repository }}"       # e.g. tristanheaven/gtkhash
+
+          # Construct the download URL for the .tar.xz asset
+          TARBALL_URL="https://github.com/${REPO}/releases/download/${TAG}/gtkhash-${VERSION}.tar.xz"
+
+          # Read the SHA256 checksum we generated earlier
+          SHA256_FILE="release-assets/gtkhash-${VERSION}.tar.xz.sha256"
+          if [ ! -f "$SHA256_FILE" ]; then
+            echo "::error::SHA256 file not found, cannot update Flathub."
+            exit 1
+          fi
+          SHA256=$(awk '{print $1}' "$SHA256_FILE")
+
+          # Clone the Flathub repository using the provided token
+          git clone "https://x-access-token:${FLATHUB_TOKEN}@github.com/flathub/org.gtkhash.gtkhash.git" flathub-repo
+          cd flathub-repo
+
+          # Update the manifest (assumes the YAML file is named org.gtkhash.gtkhash.yaml)
+          sed -i "s|url: .*|url: $TARBALL_URL|" org.gtkhash.gtkhash.yaml
+          sed -i "s|sha256: .*|sha256: $SHA256|" org.gtkhash.gtkhash.yaml
+
+          # Commit and push
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add org.gtkhash.gtkhash.yaml
+          git commit -m "chore: update to ${TAG}"
+          git push
+        shell: bash
+
+      # -----------------------------------------------------------------------
+      # Warn if the Flathub token is missing
+      # -----------------------------------------------------------------------
+      - name: Notify if Flathub token missing
+        if: env.FLATHUB_TOKEN == ''
+        run: echo "::warning::FLATHUB_TOKEN secret not set, skipping Flathub manifest update."
+        env:
+          FLATHUB_TOKEN: ${{ secrets.FLATHUB_TOKEN }}
