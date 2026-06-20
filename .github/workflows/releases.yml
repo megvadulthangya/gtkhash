@@ -86,14 +86,14 @@ jobs:
         shell: bash
 
       # -----------------------------------------------------------------------
-      # Patch meson.build to use the real version from the tag
+      # Patch meson.build to use the real version from the tag.
+      # IMPORTANT: We only replace the FIRST occurrence of "version : '...'"
+      # which belongs to the project() declaration, NOT the meson_version.
       # -----------------------------------------------------------------------
       - name: Set project version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # Replace the version string in the project() declaration
-          # (assumes the line looks like:  version : 'x.y')
-          sed -i "s/version\s*:\s*'[^']*'/version : '$VERSION'/" meson.build
+          sed -i "0,/version\s*:\s*'[^']*'/ s/version\s*:\s*'[^']*'/version : '$VERSION'/" meson.build
 
       - name: Install build dependencies
         run: |
@@ -273,7 +273,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
