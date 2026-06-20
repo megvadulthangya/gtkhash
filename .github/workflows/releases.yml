@@ -85,15 +85,15 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Patch meson.build to set the correct project version.
-      # Uses a robust sed that replaces the first value inside single quotes
-      # on the line that contains "version : '". This works regardless of
-      # surrounding whitespace or the structure of the project() block.
+      # Replaces ONLY the first occurrence of "version : '...'" in the file,
+      # which belongs to the project() declaration.  All other version
+      # requirements (dependencies) are left untouched.
       # -----------------------------------------------------------------------
       - name: Set project version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          sed -i "/version\s*:\s*'/ s/'[^']*'/'$VERSION'/" meson.build
-          # Print the modified project block for debugging
+          sed -i "0,/version\s*:\s*'/ s/'[^']*'/'$VERSION'/" meson.build
+          # Print the project() block for debugging
           sed -n "/^\s*project(/,/)/ p" meson.build
 
       - name: Install build dependencies
@@ -192,10 +192,8 @@ jobs:
           fetch-depth: 0
 
       # -----------------------------------------------------------------------
-      # Retrieve the version from the source-dist job's output.
-      # The source-dist job is a dependency of create-release, but not of
-      # windows-build. We need the version here to patch meson.build before
-      # the Windows build. We compute it independently from the tag/input.
+      # Retrieve the version from the trigger (same logic as source-dist job)
+      # so we can patch meson.build before the Windows build starts.
       # -----------------------------------------------------------------------
       - name: Determine version for Windows build
         id: win_version
@@ -211,14 +209,15 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Patch meson.build so the embedded version matches the release tag.
-      # This must happen before git archive or any build step.
+      # Replaces ONLY the first "version : '...'" occurrence (the project version),
+      # leaving dependency version requirements unchanged.
       # -----------------------------------------------------------------------
       - name: Set project version (Windows)
         shell: bash
         run: |
           VERSION="${{ steps.win_version.outputs.version }}"
-          sed -i "/version\s*:\s*'/ s/'[^']*'/'$VERSION'/" meson.build
-          # Print the project line(s) for verification
+          sed -i "0,/version\s*:\s*'/ s/'[^']*'/'$VERSION'/" meson.build
+          # Print relevant lines for verification
           grep -E "project\(|version\s*:" meson.build
 
       - uses: msys2/setup-msys2@v2
