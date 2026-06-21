@@ -125,9 +125,9 @@ jobs:
             libcaja-extension-dev \
             libthunarx-3-dev
 
-          # Install a modern Meson that supports --allow-dirty (>=0.62.0).
+          # Install the latest stable Meson to support --allow-dirty (>=0.62.0).
           python3 -m pip install --user --upgrade pip
-          python3 -m pip install --user "meson==1.5.1"
+          python3 -m pip install --user "meson==1.11.1"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Meson setup
@@ -213,13 +213,24 @@ jobs:
       # Only the version inside the project() block is changed, and the
       # meson_version line is explicitly preserved.
       # -----------------------------------------------------------------------
-      - name: Set project version (Windows)
+      - name: Set project version in meson.build
         shell: bash
         run: |
           VERSION="${{ steps.win_version.outputs.version }}"
           sed -i "/^\s*project(/,/)/ { /meson_version/! s/version\s*:\s*'[^']*'/version : '$VERSION'/ }" meson.build
-          # Print the project() block for verification
           sed -n "/^\s*project(/,/)/ p" meson.build
+
+      # -----------------------------------------------------------------------
+      # Update the Inno Setup script to reflect the correct version.
+      # The AppVersion and the installer's output filename are adjusted.
+      # -----------------------------------------------------------------------
+      - name: Set version in Inno Setup script
+        shell: bash
+        run: |
+          VERSION="${{ steps.win_version.outputs.version }}"
+          sed -i "s/^AppVersion=.*/AppVersion=$VERSION/" msys2/gtkhash.iss
+          sed -i "s/^OutputBaseFilename=.*/OutputBaseFilename=gtkhash-${VERSION}-installer/" msys2/gtkhash.iss
+          grep -E "AppVersion|OutputBaseFilename" msys2/gtkhash.iss
 
       - uses: msys2/setup-msys2@v2
         with:
