@@ -162,9 +162,11 @@ This is functionally identical to the `msys2.yml` workflow, but it also checks o
     *   For a manual dispatch, the release is **published immediately**.
     *   All files from `release-assets/` are attached.
 7.  **Flathub manifest update (optional)**:
-    *   If the `FLATHUB_TOKEN` secret is present, the job clones the Flathub repository, updates the tarball URL and SHA256 in `org.gtkhash.gtkhash.yaml`, and pushes the change.
-    *   If the token is missing, a warning is emitted but the job does not fail.
-8.  **Warn if Flathub token missing**: Provides a warning for transparency.
+    *   This step runs only when the `FLATHUB_TOKEN` secret is available in the repository.
+    *   **Required secret configuration:** The `FLATHUB_TOKEN` must be added to the repository settings under **Settings → Secrets and variables → Actions**. The secret value must be a **GitHub personal access token** (classic or fine‑grained) that has **write access** to the `flathub/org.gtkhash.gtkhash` repository. If using a classic token, the `repo` scope is sufficient. The workflow uses this token as the password (`https://x-access-token:${FLATHUB_TOKEN}@github.com/…`) to push the updated manifest.
+    *   The job clones the Flathub repository, updates the tarball URL and SHA256 in `org.gtkhash.gtkhash.yaml` based on the artifacts produced during the run, commits the change, and pushes it back.
+    *   > **Warning:** This Flathub automation step is currently **untested**. It may require manual adjustments to the manifest file path or the update logic once it is activated in production. The maintainer should validate the first automated update manually.
+8.  **Warn if Flathub token missing**: If the `FLATHUB_TOKEN` secret is not configured, a warning message is printed, and the workflow continues without failing. The warning explains that the Flathub update was skipped because the token was missing.
 
 ## 4. The Windows & MSYS2 Packaging Ecosystem
 
@@ -259,7 +261,9 @@ The Windows build environment is pinned largely to what `msys2/setup-msys2@v2` i
 
 ### 5.3 Release Workflow Troubleshooting
 
-*   **Flathub update fails**: If the job fails at the Flathub step, ensure the `FLATHUB_TOKEN` secret has write access to the `flathub/org.gtkhash.gtkhash` repository. The error may also indicate that the manifest file path changed; adjust the `sed` commands accordingly.
+*   **Flathub update fails**: This step requires a repository secret named `FLATHUB_TOKEN` that contains a GitHub personal access token with write access to `flathub/org.gtkhash.gtkhash`. The token must be created in your GitHub account settings and added to the repository’s **Settings → Secrets and variables → Actions** as a new secret with the exact name `FLATHUB_TOKEN`. When authenticating, the workflow uses this token as the password in the HTTPS clone URL (`https://x-access-token:${FLATHUB_TOKEN}@github.com/…`). If the token is missing, the update is skipped with a warning. If the step fails even when the token is present, check that the token has the required permissions (classic token with `repo` scope, or a fine‑grained token with read/write access to the Flathub repository) and that the path to the manifest file (`org.gtkhash.gtkhash.yaml`) is still correct inside the cloned repository.  
+    > **Warning:** This Flathub automation step is currently **untested**. The maintainer should verify the first run carefully and be prepared to adjust the scripted update logic.
+
 *   **Version bump conflicts**: If the `bump-version` job fails to push, check that the GitHub Actions permissions allow `contents: write`. Also ensure that no branch protection rules prevent the bot from pushing directly.
 *   **Missing artifacts**: The `create-release` job requires that both `source-dist` and all `windows-build` jobs succeed (`needs: [source-dist, windows-build]`). If any fail, the release will not be created. Check the logs of the failed job for compilation or test failures.
 
