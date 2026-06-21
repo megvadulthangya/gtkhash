@@ -1,6 +1,6 @@
 [Setup]
 AppName=GtkHash
-AppVersion=1.5
+AppVersion=1.5.2
 DefaultDirName={autopf}\GtkHash
 DefaultGroupName=GtkHash
 SetupIconFile=dist\bin\gtkhash.ico
