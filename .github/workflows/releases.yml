@@ -26,6 +26,10 @@
 #     a commit log since the previous tag.
 #   - A Flathub manifest update step is optionally run if the secret
 #     `FLATHUB_TOKEN` is available; otherwise it emits a warning.
+#   - On manual trigger the workflow automatically bumps the version in
+#     meson.build, configure.ac and NEWS, commits and pushes the change
+#     before building.  This guarantees that the embedded version matches
+#     the release tag.
 #
 # Required secrets/permissions:
 #   - GITHUB_TOKEN with `contents: write` (set in repo Settings > Actions > General).
@@ -52,6 +56,71 @@ permissions:
 jobs:
 
   # ==========================================================================
+  # BUMP VERSION (manual runs only)
+  # ==========================================================================
+  # Updates meson.build, configure.ac and NEWS to reflect the new release
+  # version, commits and pushes the change, and outputs the new commit SHA.
+  # This job is skipped for tag pushes (maintainer already bumped the version).
+  # ==========================================================================
+  bump-version:
+    name: Bump version in sources
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    outputs:
+      commit_sha: ${{ steps.push.outputs.commit_sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}      # stay on the branch that triggered the run
+          fetch-depth: 0
+
+      - name: Determine release version
+        id: version
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update meson.build
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # Change only the project version, leave meson_version untouched.
+          sed -i "/^\s*project(/,/)/ { /meson_version/! s/version\s*:\s*'[^']*'/version : '$VERSION'/ }" meson.build
+
+      - name: Update configure.ac
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DATE=$(date +%Y-%m-%d)
+          sed -i "s/\(AC_INIT(\[GtkHash\], \[\)[^]]*/\1${VERSION}/" configure.ac
+          sed -i "s/\(AC_SUBST(\[RELEASE_DATE\], \[\)[^]]*/\1${DATE}/" configure.ac
+
+      - name: Update NEWS
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DATE=$(date +%Y-%m-%d)
+          # Insert a new version entry after the two header lines (summary + blank line).
+          # The original NEWS looks like:
+          #   Summary of changes for each GtkHash release:
+          #
+          #   1.5 (2022-09-21)
+          #     * ...
+          # We insert the new version line and a blank line after line 2.
+          sed -i "2a\\${VERSION} (${DATE})\n" NEWS
+
+      - name: Commit and push changes
+        id: push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add meson.build configure.ac NEWS
+          git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
+          git push origin HEAD:${{ github.ref_name }}
+          echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+  # ==========================================================================
   # SOURCE DISTRIBUTION (Linux / Ubuntu 22.04)
   # ==========================================================================
   # Replicates the `dist` job from compatibility-validation.yml.
@@ -63,12 +132,16 @@ jobs:
   source-dist:
     name: Source distribution
     runs-on: ubuntu-22.04
+    needs: bump-version
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
+          # On manual trigger we checkout the bumped commit, on tag push
+          # the default ref is already the tag (correct version expected).
+          ref: ${{ needs.bump-version.outputs.commit_sha || github.ref }}
           fetch-depth: 0
 
       - name: Determine release version
@@ -81,20 +154,6 @@ jobs:
           fi
           VERSION="${TAG#v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-
-      # -----------------------------------------------------------------------
-      # Patch meson.build to set the correct project version.
-      # The sed command restricts the change to the project() block and
-      # explicitly skips lines containing "meson_version" so that the
-      # required Meson version is never altered.
-      # -----------------------------------------------------------------------
-      - name: Set project version
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          sed -i "/^\s*project(/,/)/ { /meson_version/! s/version\s*:\s*'[^']*'/version : '$VERSION'/ }" meson.build
-          # Print the project() block for debugging
-          sed -n "/^\s*project(/,/)/ p" meson.build
 
       - name: Install build dependencies
         run: |
@@ -125,7 +184,6 @@ jobs:
             libcaja-extension-dev \
             libthunarx-3-dev
 
-          # Install the latest stable Meson to support --allow-dirty (>=0.62.0).
           python3 -m pip install --user --upgrade pip
           python3 -m pip install --user "meson==1.11.1"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
@@ -154,7 +212,6 @@ jobs:
           for f in *.tar.gz *.tar.xz; do
             sha256sum "$f" > "${f}.sha256"
           done
-          # Remove any automatically generated .sha256sum files
           rm -f *.sha256sum
 
       - name: Upload source artifacts
@@ -174,6 +231,7 @@ jobs:
   windows-build:
     name: Windows ${{ matrix.sys }}
     runs-on: windows-latest
+    needs: bump-version
     strategy:
       fail-fast: false
       matrix:
@@ -190,12 +248,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
+          ref: ${{ needs.bump-version.outputs.commit_sha || github.ref }}
           fetch-depth: 0
 
-      # -----------------------------------------------------------------------
-      # Retrieve the version from the trigger (same logic as source-dist job)
-      # so we can patch meson.build before the Windows build starts.
-      # -----------------------------------------------------------------------
       - name: Determine version for Windows build
         id: win_version
         run: |
@@ -207,30 +262,6 @@ jobs:
           VERSION="${TAG#v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
         shell: bash
-
-      # -----------------------------------------------------------------------
-      # Patch meson.build so the embedded version matches the release tag.
-      # Only the version inside the project() block is changed, and the
-      # meson_version line is explicitly preserved.
-      # -----------------------------------------------------------------------
-      - name: Set project version in meson.build
-        shell: bash
-        run: |
-          VERSION="${{ steps.win_version.outputs.version }}"
-          sed -i "/^\s*project(/,/)/ { /meson_version/! s/version\s*:\s*'[^']*'/version : '$VERSION'/ }" meson.build
-          sed -n "/^\s*project(/,/)/ p" meson.build
-
-      # -----------------------------------------------------------------------
-      # Update the Inno Setup script to reflect the correct version.
-      # The AppVersion and the installer's output filename are adjusted.
-      # -----------------------------------------------------------------------
-      - name: Set version in Inno Setup script
-        shell: bash
-        run: |
-          VERSION="${{ steps.win_version.outputs.version }}"
-          sed -i "s/^AppVersion=.*/AppVersion=$VERSION/" msys2/gtkhash.iss
-          sed -i "s/^OutputBaseFilename=.*/OutputBaseFilename=gtkhash-${VERSION}-installer/" msys2/gtkhash.iss
-          grep -E "AppVersion|OutputBaseFilename" msys2/gtkhash.iss
 
       - uses: msys2/setup-msys2@v2
         with:
@@ -304,6 +335,8 @@ jobs:
       - name: Checkout code (for release notes)
         uses: actions/checkout@v7
         with:
+          # Checkout the same commit that was built (bumped or tag).
+          ref: ${{ needs.source-dist.outputs.commit_sha || github.ref }}
           fetch-depth: 0
 
       - name: Determine release version and tag
@@ -377,7 +410,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.meta.outputs.tag }}
         run: |
-          # Use full commit SHA as --target for a valid Git reference
           TARGET_SHA=$(git rev-parse HEAD)
 
           if [ "${{ github.event_name }}" = "push" ]; then
