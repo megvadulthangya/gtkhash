@@ -39,17 +39,23 @@
 
 name: Release
 
+# ---------------------------------------------------------------------
+# Triggers: push of a version tag (v*) or manual dispatch.
+# ---------------------------------------------------------------------
 on:
   push:
     tags:
-      - 'v*'
-  workflow_dispatch:
+      - 'v*'   # any tag starting with "v", e.g. v1.5.1
+  workflow_dispatch:    # manual trigger from the Actions tab
     inputs:
       tag:
-        description: 'Tag to release (e.g. v1.5.1)'
+        description: 'Tag to release (e.g. v1.5.1)'   # user-provided tag
         required: true
         type: string
 
+# ---------------------------------------------------------------------
+# Global permissions: allow writing release assets and pushing commits.
+# ---------------------------------------------------------------------
 permissions:
   contents: write
 
@@ -66,16 +72,21 @@ jobs:
   bump-version:
     name: Bump version in sources
     runs-on: ubuntu-latest
+    # Only run when triggered manually; skip for tag pushes.
     if: github.event_name == 'workflow_dispatch'
+    # Output the commit SHA after bumping so later jobs can checkout that commit.
     outputs:
       commit_sha: ${{ steps.push.outputs.commit_sha }}
     steps:
+      # Clone the repository at the current ref (branch or default branch).
+      # fetch-depth: 0 ensures we have full history for git operations.
       - name: Checkout code
         uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
           fetch-depth: 0
 
+      # Parse the version string from the user-provided tag (strip "v" prefix).
       - name: Determine release version
         id: version
         run: |
@@ -83,11 +94,13 @@ jobs:
           VERSION="${TAG#v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      # Update the version in meson.build (only the 'version' field).
       - name: Update meson.build
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           sed -i "/^\s*project(/,/)/ { /meson_version/! s/version\s*:\s*'[^']*'/version : '$VERSION'/ }" meson.build
 
+      # Update AC_INIT version and RELEASE_DATE in configure.ac.
       - name: Update configure.ac
         run: |
           VERSION="${{ steps.version.outputs.version }}"
@@ -95,21 +108,25 @@ jobs:
           sed -i "s/\(AC_INIT(\[GtkHash\], \[\)[^]]*/\1${VERSION}/" configure.ac
           sed -i "s/\(AC_SUBST(\[RELEASE_DATE\], \[\)[^]]*/\1${DATE}/" configure.ac
 
+      # Prepend the new version and date to the NEWS file.
       - name: Update NEWS
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           DATE=$(date +%Y-%m-%d)
           sed -i "2a\\${VERSION} (${DATE})\n" NEWS
 
+      # Update the AppVersion in the Inno Setup configuration.
       - name: Update Inno Setup version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           sed -i "s/^AppVersion=.*/AppVersion=${VERSION}/" msys2/gtkhash.iss
 
+      # Commit all version bumps and push to the same branch.
+      # Use the GitHub Actions bot identity.
       - name: Commit and push changes
         id: push
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # required for push authentication
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -124,16 +141,19 @@ jobs:
   source-dist:
     name: Source distribution
     runs-on: ubuntu-22.04
+    # Wait for version bump if it ran, otherwise start immediately.
     needs: bump-version
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      version: ${{ steps.version.outputs.version }}   # expose version for downstream jobs
     steps:
+      # Checkout the code at the bumped commit (if manual) or the tag ref (if push).
       - name: Checkout code
         uses: actions/checkout@v7
         with:
           ref: ${{ needs.bump-version.outputs.commit_sha || github.ref }}
           fetch-depth: 0
 
+      # Determine the version string from the event (push tag or manual input).
       - name: Determine release version
         id: version
         run: |
@@ -145,6 +165,7 @@ jobs:
           VERSION="${TAG#v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      # Install all necessary build dependencies for a full Linux build.
       - name: Install build dependencies
         run: |
           export DEBIAN_FRONTEND=noninteractive
@@ -178,6 +199,7 @@ jobs:
           python3 -m pip install --user "meson==1.11.1"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      # Configure the build with all optional features enabled.
       - name: Meson setup
         run: |
           meson setup build \
@@ -192,10 +214,12 @@ jobs:
             -Dbuild-caja=true \
             -Dbuild-thunar=true
 
+      # Generate compressed tarballs (gztar and xztar) without running tests.
       - name: Create distribution tarballs
         run: |
           meson dist -C build --formats gztar,xztar --no-tests --allow-dirty
 
+      # Compute SHA256 checksums for each tarball (for release integrity).
       - name: Generate SHA256 checksums
         run: |
           cd build/meson-dist
@@ -204,6 +228,7 @@ jobs:
           done
           rm -f *.sha256sum
 
+      # Upload source tarballs and checksums as a named artifact.
       - name: Upload source artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -219,24 +244,27 @@ jobs:
     runs-on: windows-latest
     needs: bump-version
     strategy:
-      fail-fast: false
+      fail-fast: false   # continue other builds if one fails
       matrix:
         sys:
-          - mingw64
-          - ucrt64
+          - mingw64   # MSYS2 environment with MINGW64
+          - ucrt64    # MSYS2 environment with UCRT64
     defaults:
       run:
-        shell: msys2 {0}
+        shell: msys2 {0}   # All steps default to MSYS2 bash unless overridden
     steps:
+      # Prevent line-ending conversion issues on Windows.
       - run: git config --global core.autocrlf input
         shell: bash
 
+      # Checkout code at the appropriate ref.
       - name: Checkout code
         uses: actions/checkout@v7
         with:
           ref: ${{ needs.bump-version.outputs.commit_sha || github.ref }}
           fetch-depth: 0
 
+      # Determine version string for the Windows build (similar to Linux job).
       - name: Determine version for Windows build
         id: win_version
         run: |
@@ -249,6 +277,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
         shell: bash
 
+      # Setup MSYS2 with the selected environment and required packages.
       - uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.sys }}
@@ -266,6 +295,8 @@ jobs:
             meson:p
             imagemagick:p
 
+      # Build and install GtkHash using makepkg-mingw in the MSYS2 environment.
+      # This also runs the test suite and produces a package.
       - name: Run makepkg-mingw (Build & Test & Install)
         run: |
           git archive --prefix gtkhash/ -o msys2/mingw-w64-gtkhash/gtkhash.tar.gz HEAD
@@ -273,29 +304,34 @@ jobs:
           PKGEXT=.pkg.tar.xz makepkg-mingw --noconfirm --noprogressbar --syncdeps --clean --cleanbuild --force
           pacman -U --noconfirm *.pkg.tar.xz
 
+      # Bundle the installed files into a portable directory using the custom script.
       - name: Run Modern Bundle Script
         working-directory: ./msys2
         run: |
           chmod +x bundle.sh
           ./bundle.sh
 
+      # Zip the portable directory into a release asset.
       - name: Create ZIP Archive
         working-directory: ./msys2/dist
         run: |
           zip -r ../../gtkhash-${{ matrix.sys }}-portable.zip ./*
 
+      # Build the Windows installer (.exe) using Inno Setup 6 (native Windows command).
       - name: Build Inno Setup Installer (.exe)
         working-directory: msys2
         shell: cmd
         run: |
           "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" gtkhash.iss
 
+      # Move the generated installer to the repository root for artifact upload.
       - name: Move Installer to root
         working-directory: msys2
         shell: bash
         run: |
           mv gtkhash-installer.exe ../gtkhash-${{ matrix.sys }}-installer.exe
 
+      # Upload the portable zip and installer exe as a matrix-specific artifact.
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -311,15 +347,17 @@ jobs:
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [source-dist, windows-build]
-    if: success()
+    needs: [source-dist, windows-build]   # wait for both build jobs to finish
+    if: success()   # only proceed if all needed jobs succeeded
     steps:
+      # Checkout code again to get the NEWS file and commit history for release notes.
       - name: Checkout code (for release notes)
         uses: actions/checkout@v7
         with:
           ref: ${{ needs.source-dist.outputs.commit_sha || github.ref }}
           fetch-depth: 0
 
+      # Determine the final tag and version based on the triggering event.
       - name: Determine release version and tag
         id: meta
         run: |
@@ -332,11 +370,14 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      # Download all artifacts from the source-dist and windows-build jobs.
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
-          path: artifacts
+          path: artifacts   # artifacts from each job will be in subdirectories
 
+      # Organize and rename all release assets into a single directory.
+      # Rename Windows files to include the version number (e.g., gtkhash-1.5.1-mingw64-installer.exe).
       - name: Prepare release assets directory
         run: |
           mkdir -p release-assets
@@ -356,6 +397,8 @@ jobs:
 
           ls -la release-assets
 
+      # Generate release notes by combining the NEWS file and a commit log.
+      # Uses the previous tag to show commits since the last release, if available.
       - name: Generate release notes
         id: notes
         run: |
@@ -383,10 +426,12 @@ jobs:
           echo "notes_file=release-notes.md" >> $GITHUB_OUTPUT
           cat release-notes.md
 
+      # Create the GitHub Release using the `gh` CLI.
+      # If triggered by a tag push, the release is a draft; if manual, it is published immediately.
       - name: Create release (draft for push, publish for manual)
         id: create_release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # needed for gh CLI authentication
           TAG: ${{ steps.meta.outputs.tag }}
         run: |
           TARGET_SHA=$(git rev-parse HEAD)
@@ -407,8 +452,10 @@ jobs:
       # -----------------------------------------------------------------------
       # Optional: Update the Flathub manifest
       # -----------------------------------------------------------------------
+      # If the FLATHUB_TOKEN secret is set, clone the Flathub repository,
+      # update the tarball URL and SHA256, commit, and push.
       - name: Flathub manifest update (optional)
-        if: env.FLATHUB_TOKEN != ''
+        if: env.FLATHUB_TOKEN != ''   # run only if the secret exists
         env:
           FLATHUB_TOKEN: ${{ secrets.FLATHUB_TOKEN }}
         run: |
@@ -437,8 +484,9 @@ jobs:
           git push
         shell: bash
 
+      # If FLATHUB_TOKEN is missing, emit a warning but do not fail the workflow.
       - name: Warn if Flathub token missing
         if: env.FLATHUB_TOKEN == ''
         run: echo "::warning::FLATHUB_TOKEN secret not set, skipping Flathub manifest update."
         env:
-          FLATHUB_TOKEN: ${{ secrets.FLATHUB_TOKEN }}
+          FLATHUB_TOKEN: ${{ secrets.FLATHUB_TOKEN }}   # still reference the secret to trigger warning
