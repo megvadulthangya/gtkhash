@@ -1,5 +1,7 @@
 Summary of changes for each GtkHash release:
 
+1.6 (2026-06-22)
+
 1.6???
     * Added full GTK4 support alongside GTK3 via conditional compilation
     * Integrated GMenu and GAction for modern GTK4 application menus
