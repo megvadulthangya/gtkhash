@@ -113,7 +113,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install dependencies
         timeout-minutes: 15
@@ -218,7 +218,7 @@ jobs:
             libthunarx-3-dev
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Meson setup
         run: |
@@ -227,7 +227,7 @@ jobs:
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
-            -Dmbedtls=true \
+            -Dmbedtls=false \
             -Dlibcrypto=true \
             -Dbuild-nautilus=false \
             -Dbuild-nemo=true \
@@ -286,7 +286,7 @@ jobs:
             adwaita-icon-theme
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Detect GTK4 support
         id: gtk4
@@ -381,7 +381,7 @@ jobs:
             thunar
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Meson setup
         run: |
@@ -390,7 +390,7 @@ jobs:
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
-            -Dmbedtls=true \
+            -Dmbedtls=false \
             -Dlibcrypto=true \
             -Dbuild-nautilus=false \
             -Dbuild-nemo=true \
@@ -448,7 +448,7 @@ jobs:
             linux-api-headers
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Detect GTK4 support
         id: gtk4
@@ -541,7 +541,7 @@ jobs:
             thunar
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Meson setup
         run: |
@@ -550,7 +550,7 @@ jobs:
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
-            -Dmbedtls=true \
+            -Dmbedtls=false \
             -Dlibcrypto=true \
             -Dbuild-nautilus=false \
             -Dbuild-nemo=true \
@@ -606,7 +606,7 @@ jobs:
             linux-api-headers
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Detect GTK4 support
         id: gtk4
@@ -703,7 +703,7 @@ jobs:
             Thunar-devel
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Meson setup
         run: |
@@ -712,7 +712,7 @@ jobs:
             -Dglib-checksums=true \
             -Dlinux-crypto=true \
             -Dnettle=true \
-            -Dmbedtls=true \
+            -Dmbedtls=false \
             -Dlibcrypto=true \
             -Dbuild-nautilus=false \
             -Dbuild-nemo=true \
@@ -771,7 +771,7 @@ jobs:
             adwaita-icon-theme
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Detect GTK4 support
         id: gtk4
@@ -839,7 +839,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
@@ -896,7 +896,7 @@ jobs:
           done
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gtkhash-dist-${{ github.sha }}
           path: build/meson-dist/*
