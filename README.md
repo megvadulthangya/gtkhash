@@ -1,4 +1,5 @@
 [![Windows Build Status](https://github.com/gtkhash/gtkhash/actions/workflows/msys2.yml/badge.svg)](https://github.com/gtkhash/gtkhash/actions/workflows/msys2.yml)
+[![Compatibility Validation](https://github.com/gtkhash/gtkhash/actions/workflows/compatibility-validation.yml/badge.svg)](https://github.com/gtkhash/gtkhash/actions/workflows/compatibility-validation.yml)
 [![Test Coverage](https://codecov.io/gh/gtkhash/gtkhash/branch/master/graph/badge.svg)](https://app.codecov.io/gh/gtkhash/gtkhash)
 [![Translations](https://hosted.weblate.org/widgets/gtkhash/-/svg-badge.svg)](https://hosted.weblate.org/engage/gtkhash/)
 [![Snap Status](https://snapcraft.io/gtkhash/badge.svg)](https://snapcraft.io/gtkhash/builds)
